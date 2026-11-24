@@ -22,7 +22,7 @@
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from string import Template
 from typing import (
     Any,
@@ -44,6 +44,9 @@ from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 from web3.types import BlockIdentifier
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import (
@@ -56,12 +59,16 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     TypeCheckMixin,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import Field
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
 from packages.valory.skills.chatui_abci.models import SharedState as ChatUISharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
-from packages.valory.skills.decision_maker_abci.redeem_info import Trade
+from packages.valory.skills.decision_maker_abci.redeem_info import (
+    INVALID_MARKET_ANSWER,
+    Trade,
+)
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.models import (
@@ -165,6 +172,8 @@ class RedeemingProgress:
     answered: list = field(default_factory=list)
     claiming_condition_ids: List[str] = field(default_factory=list)
     claimed_condition_ids: List[str] = field(default_factory=list)
+    # the trades fetch gave up, so the check may have missed positions
+    trades_fetch_failed: bool = False
 
     @property
     def check_finished(self) -> bool:
@@ -175,6 +184,22 @@ class RedeemingProgress:
     def claim_finished(self) -> bool:
         """Whether the claiming has finished."""
         return self.claim_started and self.claim_from_block == self.claim_to_block
+
+    @property
+    def claiming_payouts(self) -> List[Tuple[str, int]]:
+        """Get the question and the payout, in wei, of each market being claimed."""
+        claiming = set(self.claiming_condition_ids)
+        payouts = []
+        for trade in self.trades:
+            condition = trade.fpmm.condition
+            if condition.id.to_0x_hex() not in claiming:
+                continue
+            amount = self.claimable_amounts.get(condition.id, 0)
+            # An invalid market pays each outcome an equal share.
+            if trade.fpmm.current_answer_index == INVALID_MARKET_ANSWER:
+                amount //= condition.outcomeSlotCount
+            payouts.append((trade.fpmm.title, amount))
+        return payouts
 
     @property
     def claim_params(self) -> Optional[ClaimParamsType]:
@@ -223,6 +248,14 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # there would ``AttributeError`` on the live instance. ``None`` = not yet
         # detected; set once per process (Pearl restarts on a contract switch).
         self.staking_regime_is_new: Optional[bool] = None
+        # The feed cards of a Polymarket redeem tx, written once it settles.
+        self.polymarket_payouts_to_record: List[List[Field]] = []
+        # The positions a builder redeem was sent for, by condition id, until
+        # the positions API stops listing them as redeemable.
+        self.polymarket_builder_redeems_pending: Dict[str, List[Dict[str, Any]]] = {}
+        # Withdrawal mode lasts until a restart, re-running the sweep each
+        # cycle; only its first result is the withdrawal the user asked for.
+        self.positions_sold_recorded: bool = False
         self.strategy_to_filehash: Dict[str, str] = {}
         self.strategies_executables: Dict[str, Tuple[str, str]] = {}
         self.in_flight_req: bool = False
@@ -246,6 +279,11 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.benchmarking_mech_calls: int = 0
         # whether the mech response round timed out
         self.mech_timed_out: bool = False
+        # consecutive failed order-book fetches, and when the run of failures began
+        self.orderbook_failures: int = 0
+        self.orderbook_failing_since: Optional[int] = None
+        # set when a decision could not reach the CLOB; cleared by BlacklistingBehaviour
+        self.orderbook_fetch_failed: bool = False
         # final_tx_hash of the most recent tx whose post-bet bookkeeping
         # was already applied by `PostBetUpdateBehaviour`. Guards against
         # double-mutation when `PostBetUpdateRound` self-loops on
@@ -254,6 +292,48 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # consensus-replicated, so re-running the behaviour would advance
         # them twice.
         self.post_bet_update_applied_tx_hash: Optional[str] = None
+
+    def record_orderbook_fetch(self, reached: bool, timestamp: int) -> None:
+        """Count a fetch that could not reach the CLOB; one that did resets the count.
+
+        :param reached: False when the connection flagged the CLOB unreachable.
+        :param timestamp: when the fetch was made, in unix seconds.
+        """
+        if reached:
+            self.orderbook_failures = 0
+            self.orderbook_failing_since = None
+            return
+        if self.orderbook_failures == 0:
+            self.orderbook_failing_since = timestamp
+        self.orderbook_failures += 1
+
+    def record_orderbook_response(
+        self, response: Any, timestamp: int
+    ) -> Tuple[Optional[str], bool]:
+        """Count an order-book response towards the CLOB's status.
+
+        :param response: the connection's response to the fetch.
+        :param timestamp: when the fetch was made, in unix seconds.
+        :return: why the book is unreadable (None when it was read), and whether
+            the CLOB was reached (not flagged unreachable).
+        """
+        if isinstance(response, dict):
+            reached = not response.get(CLOB_UNREACHABLE)
+            error = response.get("error")
+            error = str(error) if error else None
+        else:
+            reached = response is not None
+            error = "no response" if response is None else f"unexpected {response!r}"
+        self.record_orderbook_fetch(reached, timestamp)
+        return error, reached
+
+    def is_orderbook_unavailable(self, threshold: int) -> bool:
+        """Whether enough consecutive book fetches failed to call the CLOB unreachable.
+
+        :param threshold: the number of consecutive failures that make it unreachable.
+        :return: whether the order books are unavailable.
+        """
+        return self.orderbook_failures >= threshold
 
     @property
     def mock_question_id(self) -> Any:
@@ -309,17 +389,13 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
 
         # Get current timestamp
         now_timestamp = int(time.time())
-        # Convert timestamps to datetime objects
-        max_date = datetime.fromtimestamp(max_timestamp)
-        current_date = datetime.fromtimestamp(now_timestamp)
+        max_date = datetime.fromtimestamp(max_timestamp, tz=timezone.utc)
+        current_date = datetime.fromtimestamp(now_timestamp, tz=timezone.utc)
         self.context.logger.info(
             f"Simulating timestamps between {current_date} and {max_date}"
         )
         # Generate list of timestamps with one day intervals
-        timestamps = []
-        while current_date <= max_date:
-            timestamps.append(int(current_date.timestamp()))
-            current_date += timedelta(days=1)
+        timestamps = list(range(now_timestamp, max_timestamp + 1, 24 * 60 * 60))
         self.context.logger.info(f"Simulated timestamps: {timestamps}")
         self.simulated_days = timestamps
 
@@ -429,6 +505,20 @@ class DecisionMakerParams(
         )
         if self.sample_bets_closing_days <= 0:
             msg = "The number of days to sample bets from must be positive!"
+            raise ValueError(msg)
+
+        self.declined_market_cooldown: int = self._ensure(
+            "declined_market_cooldown", kwargs, int
+        )
+        if self.declined_market_cooldown < 0:
+            msg = "The declined market cooldown must not be negative!"
+            raise ValueError(msg)
+
+        self.orderbook_unavailable_threshold: int = self._ensure(
+            "orderbook_unavailable_threshold", kwargs, int
+        )
+        if self.orderbook_unavailable_threshold < 1:
+            msg = "The order book unavailable threshold must be at least 1!"
             raise ValueError(msg)
 
         # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
@@ -605,6 +695,15 @@ class DecisionMakerParams(
         self.polymarket_neg_risk_ctf_collateral_adapter_address: str = self._ensure(
             "polymarket_neg_risk_ctf_collateral_adapter_address", kwargs, str
         )
+        self.polymarket_exchange_v3_address: str = self._ensure(
+            "polymarket_exchange_v3_address", kwargs, str
+        )
+        self.polymarket_position_manager_address: str = self._ensure(
+            "polymarket_position_manager_address", kwargs, str
+        )
+        self.polymarket_router_address: str = self._ensure(
+            "polymarket_router_address", kwargs, str
+        )
         self.pol_threshold_for_swap: int = self._ensure(
             "pol_threshold_for_swap", kwargs, int
         )
@@ -620,6 +719,10 @@ class DecisionMakerParams(
         self.exclude_neg_risk_markets: bool = self._ensure(
             "exclude_neg_risk_markets", kwargs, bool
         )
+        self.enable_market_ranking: bool = self._ensure(
+            "enable_market_ranking", kwargs, bool
+        )
+        self.ranking_min_score: float = self._ensure("ranking_min_score", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property

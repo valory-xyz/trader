@@ -21,8 +21,11 @@
 
 import json
 import tempfile
+from enum import Enum
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
@@ -30,6 +33,16 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    DW_APPROVALS_VERSION,
+)
+
+_CURRENT_DW_RECORD = {
+    "dw_address": "0xDW",
+    "dw_owner": "0xagent",
+    "approvals_done": True,
+    "approvals_version": DW_APPROVALS_VERSION,
+}
 
 
 def test_check_benchmarking_mode_round_initialization() -> None:
@@ -91,10 +104,7 @@ def test_end_block_allowances_current_and_dw_present_skips() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_context.params.store_path = tmpdir
         _current_allowances(tmpdir)
-        _write_dw(
-            tmpdir,
-            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
-        )
+        _write_dw(tmpdir, _CURRENT_DW_RECORD)
 
         round_instance = CheckBenchmarkingModeRound(
             synchronized_data=mock_synced_data, context=mock_context
@@ -121,55 +131,6 @@ def test_end_block_allowances_current_but_no_dw_reapproves() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_context.params.store_path = tmpdir
         _current_allowances(tmpdir)  # no deposit_wallet.json
-
-        round_instance = CheckBenchmarkingModeRound(
-            synchronized_data=mock_synced_data, context=mock_context
-        )
-        result = round_instance.end_block()
-
-    assert result is not None
-    _, event = result
-    assert event == Event.SET_APPROVAL
-
-
-def test_end_block_allowances_current_but_dw_owner_mismatch_reapproves() -> None:
-    """Allowances current but a DW owned by a different EOA re-enters setup.
-
-    Covers mnemonic-recovery rotation: the recorded ``dw_owner`` no longer
-    matches the agent EOA, so the DW must be re-provisioned under the new
-    EOA.
-    """
-    mock_context = MagicMock()
-    mock_context.params.is_running_on_polymarket = True
-    mock_context.agent_address = "0xAGENT"
-    mock_synced_data = MagicMock(spec=SynchronizedData)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        mock_context.params.store_path = tmpdir
-        _current_allowances(tmpdir)
-        _write_dw(tmpdir, {"dw_address": "0xDW", "dw_owner": "0xOLD"})
-
-        round_instance = CheckBenchmarkingModeRound(
-            synchronized_data=mock_synced_data, context=mock_context
-        )
-        result = round_instance.end_block()
-
-    assert result is not None
-    _, event = result
-    assert event == Event.SET_APPROVAL
-
-
-def test_end_block_allowances_current_but_dw_no_address_reapproves() -> None:
-    """A DW record without an address is treated as not-ready (re-enters setup)."""
-    mock_context = MagicMock()
-    mock_context.params.is_running_on_polymarket = True
-    mock_context.agent_address = "0xAGENT"
-    mock_synced_data = MagicMock(spec=SynchronizedData)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        mock_context.params.store_path = tmpdir
-        _current_allowances(tmpdir)
-        _write_dw(tmpdir, {"dw_owner": "0xAGENT"})  # no dw_address
 
         round_instance = CheckBenchmarkingModeRound(
             synchronized_data=mock_synced_data, context=mock_context
@@ -264,19 +225,96 @@ def test_end_block_polymarket_stale_v2_allowances_file_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
-def test_clob_version_constant_is_v4() -> None:
-    """The CLOB-version stamp must be ``v4``.
+def test_clob_version_constant_is_v5() -> None:
+    """The CLOB-version stamp must be ``v5``.
 
-    Tying the constant down ensures the v3→v4 migration trigger lands; a
-    silent revert to ``v3`` would let stale persisted files short-circuit
-    the approval round and skip ``setApprovalForAll`` against the new
-    collateral-adapter addresses.
+    Tying the constant down ensures the v4→v5 migration trigger lands; a
+    silent revert to ``v4`` would let stale persisted files short-circuit
+    the approval round and skip the Safe's Router ``setApprovalForAll`` on
+    the PositionManager.
     """
     from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
         POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
     )
 
-    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v4"
+    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v5"
+
+
+def _end_block_event(tmpdir: str) -> Enum:
+    """Run the round on ``tmpdir`` for agent ``0xAGENT`` and return its event.
+
+    :param tmpdir: the store directory.
+    :return: the event.
+    """
+    context = MagicMock()
+    context.params.is_running_on_polymarket = True
+    context.params.store_path = tmpdir
+    context.agent_address = "0xAGENT"
+    round_ = CheckBenchmarkingModeRound(MagicMock(spec=SynchronizedData), context)
+    return round_.end_block()[1]  # type: ignore[index]
+
+
+_MISSING = object()
+
+
+@pytest.mark.parametrize(
+    "key, value",
+    [
+        ("dw_address", _MISSING),
+        ("dw_owner", "0xOLD"),
+        ("approvals_version", _MISSING),
+        ("approvals_version", None),
+        ("approvals_version", DW_APPROVALS_VERSION - 1),
+        ("approvals_version", DW_APPROVALS_VERSION + 1),
+        ("approvals_version", str(DW_APPROVALS_VERSION)),
+        ("approvals_done", False),
+        ("approvals_done", "true"),
+    ],
+    ids=[
+        "no_address",
+        "owner_mismatch",
+        "pre_v2",
+        "none",
+        "stale",
+        "newer",
+        "string",
+        "pending",
+        "flag_string",
+    ],
+)
+def test_end_block_allowances_current_but_dw_not_ready_reapproves(
+    key: str, value: object
+) -> None:
+    """Current Safe allowances re-enter setup unless every DW condition holds.
+
+    Each case breaks one condition of an otherwise current record, so each
+    condition of the gate is pinned on its own.
+
+    :param key: the DepositWallet record field to change.
+    :param value: its new value, or ``_MISSING`` to drop the field.
+    """
+    record = {**_CURRENT_DW_RECORD, key: value}
+    if value is _MISSING:
+        del record[key]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _current_allowances(tmpdir)
+        _write_dw(tmpdir, record)
+        assert _end_block_event(tmpdir) == Event.SET_APPROVAL
+
+
+def test_upgraded_install_gets_safe_router_approval_once() -> None:
+    """A ``v4`` stamp from before the Router approval enters setup once.
+
+    Once the post-approval check writes the current stamp, the next period
+    skips the approval round.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _write_dw(tmpdir, _CURRENT_DW_RECORD)
+        with open(Path(tmpdir) / "polymarket.json", "w") as f:
+            json.dump({"allowances_set": True, "clob_version": "v4"}, f)
+        assert _end_block_event(tmpdir) == Event.SET_APPROVAL
+        _current_allowances(tmpdir)
+        assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
 
 
 def test_end_block_polymarket_stale_v3_allowances_file_reapproves() -> None:

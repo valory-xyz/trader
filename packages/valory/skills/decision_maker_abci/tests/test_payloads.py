@@ -91,6 +91,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "utilized_tools": "dummy utilized tools",
                 "redeemed_condition_ids": "dummy redeemed condition ids",
                 "payout_so_far": 1,
+                "nothing_to_redeem": True,
             },
         ),
         (

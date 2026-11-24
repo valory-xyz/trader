@@ -31,8 +31,6 @@ from types import SimpleNamespace
 from typing import Any, Mapping
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
     PER_POSITION_LOOKUP_WINDOW_DAYS,
 )
@@ -229,11 +227,10 @@ class TestPolymarketFetcherFlagOn:
             "info_utility": 0.6,
         }
 
-    @pytest.mark.parametrize("use_flag", [False])
-    def test_flag_off_does_not_call_mech_analytics_client(self, use_flag: bool) -> None:
-        """Flag off does not call mech analytics client."""
+    def test_polygon_uses_analytics_even_with_flag_disabled(self) -> None:
+        """Polygon has no Graph fallback after the squid migration."""
         fetcher = PolymarketPredictionsFetcher(
-            _make_context(use_flag=use_flag, is_polymarket=True), MagicMock()
+            _make_context(use_flag=False, is_polymarket=True), MagicMock()
         )
         with (
             patch(
@@ -246,7 +243,8 @@ class TestPolymarketFetcherFlagOn:
         ):
             fetcher.fetch_mech_tool_for_question(TITLE, SAFE)
             fetcher._fetch_prediction_response_from_mech(TITLE, SAFE)
-        assert mock_fetch.call_count == 0
+        assert mock_fetch.call_count == 2
+        assert all(call.kwargs["chain_id"] == 137 for call in mock_fetch.call_args_list)
 
 
 class TestPerPositionLookbackWindow:

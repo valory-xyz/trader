@@ -19,11 +19,16 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import random
 from collections import defaultdict
 from datetime import datetime
+from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, FrozenSet, Generator, List, Optional, Tuple
 
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    set_no_markets_left,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
 )
@@ -40,6 +45,36 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
+# Kelly's default min_edge (0.01) leaves no edge on an ask at 0.99 or above.
+MAX_BETTABLE_ASK = 0.99
+# Markets whose book is read per period before giving up on a mech request.
+BOOK_CHECK_CANDIDATES = 3
+# A ranked list steers the picks for this long after it was requested.
+RANKING_MAX_AGE = UNIX_DAY
+RANKING_PICK_EXPONENT = 4
+# Recurring Polymarket markets the agent opens a position on only when the
+# latest ranked list scored them at or above `ranking_min_score`.
+SCORE_GATED_POLYMARKET_TAGS: FrozenSet[str] = frozenset({"hide-from-new"})
+
+
+class PoolRejection(str, Enum):
+    """Why a bet is left out of the pool, in the classifier's precedence order."""
+
+    EXPIRED = "expired"
+    WRONG_MODE = "wrong_mode"
+    OUT_OF_SAFE = "out_of_safe"
+    OUT_OF_OPEN = "out_of_open"
+    WRONG_QUEUE = "wrong_queue"
+    DECLINED_IN_EPOCH = "declined_in_epoch"
+    COOLING = "cooling"
+    PROCESSABLE = "processable"
+
+
+def format_pool_breakdown(breakdown: Dict[PoolRejection, int]) -> str:
+    """Format a pool breakdown as ``reason=count`` pairs, every reason in order."""
+    return " ".join(
+        f"{reason.value}={breakdown.get(reason, 0)}" for reason in PoolRejection
+    )
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -82,6 +117,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.synchronized_data.is_activity_target_met and self.activity_goal_met
 
     @property
+    def pool_logger(self) -> Any:
+        """Get the logger of the pool and per-pick checks."""
+        return self.context.logger
+
+    @property
+    def venue_tag(self) -> str:
+        """Get the log tag of the venue the agent trades on."""
+        return "[POLYSTRAT]" if self.params.is_running_on_polymarket else "[OMENSTRAT]"
+
+    @property
     def review_bets_for_selling(self) -> bool:
         """Whether to review bets for selling."""
         return self.synchronized_data.review_bets_for_selling
@@ -102,7 +147,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         bets_placed = bool(bet.n_bets)
         if not bets_placed and selling_specific:
             # non-expired bet with no bets, not processable
-            self.context.logger.info(f"Bet {bet.id} has no bets")
+            self.pool_logger.info(f"Bet {bet.id} has no bets")
             return False
 
         bet_mode_allowable = multi_bets_active or not bets_placed or selling_specific
@@ -129,28 +174,63 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        return bet_mode_allowable and within_ranges and bet_queue_processable
+        return (
+            bet_mode_allowable
+            and within_ranges
+            and bet_queue_processable
+            and not self._declined_in_epoch(bet)
+            and not self._declined_recently(bet, now)
+        )
+
+    def _declined_in_epoch(self, bet: Bet) -> bool:
+        """Whether an Omen market was declined in the current staking epoch.
+
+        :param bet: the bet to check.
+        :return: whether the bet is held back until the next epoch.
+        """
+        if self.params.is_running_on_polymarket or self.benchmarking_mode.enabled:
+            return False
+        return bet.is_declined_in_epoch(self.synchronized_data.epoch_start)
+
+    def _declined_recently(self, bet: Bet, now: int) -> bool:
+        """Whether a market left without a position was processed less than the cooldown ago.
+
+        Any decision that leaves no position starts the cooldown: a decline (tie,
+        unprofitable, mech error) as well as a full sell.
+
+        :param bet: the bet to check.
+        :param now: the current timestamp.
+        :return: whether the bet is still cooling down.
+        """
+        # Benchmarking replays simulated time per market, so no cooldown there.
+        if self.benchmarking_mode.enabled:
+            return False
+        # A stamp in the future (clock skew) does not hold the market back.
+        elapsed = now - bet.processed_timestamp
+        return (
+            bet.invested_amount == 0
+            and bet.processed_timestamp > 0
+            and 0 <= elapsed < self.params.declined_market_cooldown
+        )
 
     def _classify_processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool
-    ) -> str:
+    ) -> PoolRejection:
         """Classify the dominant rejection reason in the mirror's own precedence.
 
-        Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
-        that trips, in that precedence order. Pure read; does NOT call
-        ``blacklist_forever`` and does NOT mutate the bet — the real filter
-        ``processable_bet`` still runs and is the source of truth.
+        Returns the first ``PoolRejection`` that trips, in its declaration
+        order. Pure read; does NOT call ``blacklist_forever`` and does NOT
+        mutate the bet - the real filter ``processable_bet`` still runs and
+        is the source of truth.
 
-        Caveat: ``processable_bet`` does NOT short-circuit on the last three
-        conditions — it computes ``bet_mode_allowable / within_opening_range
-        / within_safe_range / bet_queue_processable`` independently and ANDs
-        them. It also has a ``blacklist_forever()`` side-effect on
-        ``not within_safe_range`` regardless of the other conditions. So
-        when a bet trips both ``wrong_mode`` and ``out_of_safe``, this
-        classifier reports ``wrong_mode`` (precedence) while the actual
-        side-effect blacklists the bet — and the bet will surface as
-        ``expired`` in the next cycle's breakdown.
+        Caveat: after the expiry and sell-review checks ``processable_bet`` does NOT
+        short-circuit - it computes each remaining condition independently
+        and ANDs them. It also has a ``blacklist_forever()`` side-effect on
+        ``not within_safe_range`` regardless of the other conditions. So when
+        a bet trips both ``wrong_mode`` and ``out_of_safe``, this classifier
+        reports ``wrong_mode`` (precedence) while the actual side-effect
+        blacklists the bet - and the bet will surface as ``expired`` in the
+        next cycle's breakdown.
 
         :param bet: the bet to classify.
         :param now: current timestamp.
@@ -158,14 +238,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :return: the dominant rejection reason, or ``processable``.
         """
         if bet.queue_status.is_expired():
-            return "expired"
+            return PoolRejection.EXPIRED
         selling_specific = self.kpi_is_met and self.review_bets_for_selling
         bets_placed = bool(bet.n_bets)
         if not bets_placed and selling_specific:
-            return "wrong_mode"
+            return PoolRejection.WRONG_MODE
         bet_mode_allowable = multi_bets_active or not bets_placed or selling_specific
         if not bet_mode_allowable:
-            return "wrong_mode"
+            return PoolRejection.WRONG_MODE
         within_safe_range = (
             now
             < bet.openingTimestamp
@@ -173,20 +253,24 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             - self.params.safe_voting_range
         )
         if not within_safe_range:
-            return "out_of_safe"
+            return PoolRejection.OUT_OF_SAFE
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
         if not within_opening_range:
-            return "out_of_open"
+            return PoolRejection.OUT_OF_OPEN
         processable_statuses = {
             QueueStatus.TO_PROCESS,
             QueueStatus.PROCESSED,
             QueueStatus.REPROCESSED,
         }
         if bet.queue_status not in processable_statuses:
-            return "wrong_queue"
-        return "processable"
+            return PoolRejection.WRONG_QUEUE
+        if self._declined_in_epoch(bet):
+            return PoolRejection.DECLINED_IN_EPOCH
+        if self._declined_recently(bet, now):
+            return PoolRejection.COOLING
+        return PoolRejection.PROCESSABLE
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
@@ -227,19 +311,34 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         Sample a bet and return its index.
 
         The sampling logic follows the specified priority logic:
-        1. Filter out all the bets that have a processed_timestamp != 0 to get a list of new bets.
-        2. If the list of new bets is not empty:
-           2.1 Order the list in decreasing order of liquidity (highest liquidity first).
-           2.2 For bets with the same liquidity, order them in decreasing order of market closing time (openingTimestamp).
-        3. If the list of new bets is empty:
-           3.1 Order the bets in decreasing order of invested_amount.
-           3.2 For bets with the same invested_amount, order them in increasing order of processed_timestamp (least recently processed first).
-           3.3 For bets with the same invested_amount and processed_timestamp, order them in decreasing order of liquidity.
-           3.4 For bets with the same invested_amount, processed_timestamp, and liquidity, order them in decreasing order of market closing time (openingTimestamp).
+        1. Take the bets of the first non-empty queue status: TO_PROCESS, then PROCESSED, then REPROCESSED.
+        2. Order them in decreasing order of invested_amount.
+        3. For bets with the same invested_amount, order them in increasing order of processed_timestamp (least recently processed first).
+        4. For bets with the same invested_amount and processed_timestamp, order them in decreasing order of liquidity.
+        5. For bets with the same invested_amount, processed_timestamp, and liquidity, order them in decreasing order of market closing time (openingTimestamp).
 
         :param bets: the bets' values to compare for the sampling.
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
         """
+
+        ranked = self._ranked_list(bets)
+        if (
+            ranked
+            and not self.benchmarking_mode.enabled
+            and self.synced_timestamp - ranked[0].ranked_at < RANKING_MAX_AGE
+            # held markets keep their priority, as in today's order
+            and not any(bet.invested_amount for bet in bets)
+        ):
+            # A draw weighted by score, seeded by the period's agreed
+            # randomness, so the agents of a fleet spread over the list; the
+            # suffix keeps it apart from the tool policy's draw on the same value.
+            seed = f"{self.synchronized_data.most_voted_randomness}:ranked-pick"
+            rng = random.Random(seed)  # nosec
+            weights = [
+                (bet.research_score or 0.0) ** RANKING_PICK_EXPONENT for bet in ranked
+            ]
+            best = rng.choices(ranked, weights=weights if any(weights) else None)[0]
+            return self.bets.index(best)
 
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
             bets
@@ -251,6 +350,22 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         sorted_bets = self._sort_by_priority_logic(bets_to_sort)
 
         return self.bets.index(sorted_bets[0])
+
+    def _ranked_list(self, bets: List[Bet]) -> List[Bet]:
+        """Get the given bets that are untried markets of the latest ranked list."""
+        latest = self._latest_ranked_at()
+        return [
+            bet
+            for bet in bets
+            if latest
+            and bet.ranked_at == latest
+            and bet.queue_status == QueueStatus.TO_PROCESS
+            and not bet.invested_amount
+            # declined or book-failed markets go back to today's order
+            and not bet.processed_timestamp
+            # unscored or low-scored markets also follow today's order
+            and (bet.research_score or 0.0) >= self.params.ranking_min_score
+        ]
 
     def _sampling_benchmarking_bet(self, bets: List[Bet]) -> Optional[int]:
         """Sample bet for benchmarking"""
@@ -277,26 +392,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _sample(self) -> Optional[int]:
-        """Sample a bet, mark it as processed, and return its index."""
-        # modify time "NOW" in benchmarking mode
-        if self.benchmarking_mode.enabled:
-            safe_voting_range = (
-                self.params.opening_margin + self.params.safe_voting_range
-            )
-            now = self.shared_state.get_simulated_now_timestamp(
-                self.bets, safe_voting_range
-            )
-            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
-        else:
-            now = self.synced_timestamp
-
+    def _processable_bets(self, now: int) -> Tuple[List[Bet], str]:
+        """Get the processable bets, with the fallback when allowed, and a note on the held-back ones."""
         # Strict-mode breakdown (observability only — pure read pass).
         # Captured BEFORE the side-effecting processable_bet call so
         # out_of_safe bets are still classified as out_of_safe rather than
         # the `expired` they'll appear as after blacklist_forever fires.
         # No bet/list mutation — populates a fresh local dict.
-        strict_breakdown: Dict[str, int] = defaultdict(int)
+        strict_breakdown: Dict[PoolRejection, int] = defaultdict(int)
         for bet in self.bets:
             strict_breakdown[
                 self._classify_processable_bet(
@@ -318,8 +421,29 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # If no bets available and fallback is enabled, try again with fallback
         fallback_activated = False
-        if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
-            self.context.logger.info(
+        # Markets held back after a decline must not push the agent into
+        # re-betting the markets it already holds; it waits out the hold.
+        n_cooling = strict_breakdown[PoolRejection.COOLING]
+        n_declined_in_epoch = strict_breakdown[PoolRejection.DECLINED_IN_EPOCH]
+        markets_held = n_cooling > 0 or n_declined_in_epoch > 0
+        held_note = ""
+        if n_cooling:
+            held_note += (
+                f" {n_cooling} markets are cooling down for "
+                f"{self.params.declined_market_cooldown}s after a decision "
+                "that left no position."
+            )
+        if n_declined_in_epoch:
+            held_note += (
+                f" {n_declined_in_epoch} markets declined in "
+                "this staking epoch are held back until the next one."
+            )
+        if (
+            len(available_bets) <= 0
+            and self._multi_bets_fallback_allowed()
+            and not markets_held
+        ):
+            self.pool_logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
             )
             available_bets = list(
@@ -334,7 +458,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             )
             if len(available_bets) > 0:
                 fallback_activated = True
-                self.context.logger.info(
+                self.pool_logger.info(
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
 
@@ -344,7 +468,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # Bets that strict's blacklist_forever side-effect just killed will
         # appear here as `expired` rather than `out_of_safe` — that's the
         # post-filter state, by design.
-        fallback_breakdown: Optional[Dict[str, int]] = None
+        fallback_breakdown: Optional[Dict[PoolRejection, int]] = None
         if fallback_activated:
             fallback_breakdown = defaultdict(int)
             for bet in self.bets:
@@ -352,63 +476,46 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     self._classify_processable_bet(bet, now=now, multi_bets_active=True)
                 ] += 1
 
-        self.context.logger.info(
-            f"[POLYSTRAT] filter=processable_bet "
+        self.pool_logger.info(
+            f"{self.venue_tag} filter=processable_bet "
             f"input={len(self.bets)} "
             f"dropped={len(self.bets) - len(available_bets)} "
             f"kept={len(available_bets)} "
             f"fallback_activated={fallback_activated}"
         )
-        self.context.logger.info(
-            f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
-            f"expired={strict_breakdown['expired']} "
-            f"wrong_mode={strict_breakdown['wrong_mode']} "
-            f"out_of_safe={strict_breakdown['out_of_safe']} "
-            f"out_of_open={strict_breakdown['out_of_open']} "
-            f"wrong_queue={strict_breakdown['wrong_queue']} "
-            f"processable={strict_breakdown['processable']}"
+        self.pool_logger.info(
+            f"{self.venue_tag} filter=processable_bet.breakdown.strict "
+            f"{format_pool_breakdown(strict_breakdown)}"
         )
         if fallback_breakdown is not None:
-            self.context.logger.info(
-                f"[POLYSTRAT] filter=processable_bet.breakdown.fallback "
-                f"expired={fallback_breakdown['expired']} "
-                f"wrong_mode={fallback_breakdown['wrong_mode']} "
-                f"out_of_safe={fallback_breakdown['out_of_safe']} "
-                f"out_of_open={fallback_breakdown['out_of_open']} "
-                f"wrong_queue={fallback_breakdown['wrong_queue']} "
-                f"processable={fallback_breakdown['processable']}"
+            self.pool_logger.info(
+                f"{self.venue_tag} filter=processable_bet.breakdown.fallback "
+                f"{format_pool_breakdown(fallback_breakdown)}"
             )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
-            self.context.logger.warning(msg)
-            return None
+            self.pool_logger.warning(msg + held_note)
+        return available_bets, held_note
 
-        if self.benchmarking_mode.enabled:
-            idx = self._sampling_benchmarking_bet(available_bets)
-            if not idx:
-                return None
+    @staticmethod
+    def _normalized_tags(tags: List[str]) -> FrozenSet[str]:
+        """Get the tags stripped and lower-cased, so casing or padding cannot break a match."""
+        return frozenset(t.strip().lower() for t in tags)
 
-        # Policy filter: reject candidates whose Polymarket tags are on the
-        # operator-configured disable list. Normalize both sides — strip
-        # whitespace + lowercase — so tag casing drift or accidental
-        # whitespace upstream doesn't silently break the match. Pre-filter
-        # the candidate pool once here rather than per-iteration inside the
-        # while-loop so we avoid redundant priority-sorting of bets we've
-        # already decided to skip.
-        disabled_tags = {
-            t.strip().lower() for t in self.params.disabled_polymarket_tags
-        }
+    def _drop_disabled_tags(self, available_bets: List[Bet]) -> List[Bet]:
+        """Drop the bets that carry a disabled Polymarket tag."""
+        disabled_tags = self._normalized_tags(self.params.disabled_polymarket_tags)
         if disabled_tags:
             before = len(available_bets)
             available_bets = [
                 bet
                 for bet in available_bets
-                if not (disabled_tags & {t.strip().lower() for t in bet.poly_tags})
+                if not disabled_tags & self._normalized_tags(bet.poly_tags)
             ]
             skipped = before - len(available_bets)
-            self.context.logger.info(
-                f"[POLYSTRAT] filter=disabled_tag "
+            self.pool_logger.info(
+                f"{self.venue_tag} filter=disabled_tag "
                 f"input={before} dropped={skipped} "
                 f"kept={len(available_bets)} slugs={len(disabled_tags)}"
             )
@@ -417,11 +524,115 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     f"All {before} candidate bets were dropped by the "
                     f"disabled-tag filter!"
                 )
-                self.context.logger.warning(msg)
+                self.pool_logger.warning(msg)
+        return available_bets
+
+    def _drop_ungated(self, available_bets: List[Bet], now: int) -> List[Bet]:
+        """Drop the unheld bets with a gated tag and no qualifying score on the latest ranked list.
+
+        :param available_bets: the candidate bets.
+        :param now: the current timestamp.
+        :return: the bets that may be picked.
+        """
+        # benchmarking never picks from the ranked list, so no score gates it
+        if self.benchmarking_mode.enabled:
+            return available_bets
+
+        latest = self._latest_ranked_at()
+        list_is_live = latest > 0 and now - latest < RANKING_MAX_AGE
+        kept: List[Bet] = []
+        held = 0
+        for bet in available_bets:
+            if not SCORE_GATED_POLYMARKET_TAGS & self._normalized_tags(bet.poly_tags):
+                kept.append(bet)
+            elif bet.invested_amount > 0:
+                held += 1
+                kept.append(bet)
+            elif (
+                list_is_live
+                and bet.ranked_at == latest
+                and bet.research_score is not None
+                and bet.research_score >= self.params.ranking_min_score
+            ):
+                kept.append(bet)
+
+        self.pool_logger.info(
+            f"{self.venue_tag} filter=score_gate "
+            f"input={len(available_bets)} "
+            f"dropped={len(available_bets) - len(kept)} "
+            f"kept={len(kept)} held={held} "
+            f"list_live={str(list_is_live).lower()}"
+        )
+        if available_bets and not kept:
+            self.pool_logger.warning(
+                f"All {len(available_bets)} candidate bets were dropped by the "
+                "score gate!"
+            )
+        return kept
+
+    def _pick_filter_reason(self, bet: Bet) -> Optional[str]:
+        """Get the per-pick check the bet fails, `None` when it passes them all."""
+        liquidity = bet.scaledLiquidityMeasure
+        if liquidity == 0:
+            msg = f"Sampled bet {bet.id} has zero liquidity, skipping"
+            self.pool_logger.warning(msg)
+            return "zero_liq"
+
+        # This is to avoid sampling bets where the market is already heavily
+        # skewed towards one outcome, results in unfavorable risk to reward ratio
+        if self.params.is_outcome_side_threshold_filter_enabled:
+            self.pool_logger.info(
+                f"Sampled bet {bet.id} has liquidity {liquidity} and outcome token marginal prices {bet.outcomeTokenMarginalPrices}"
+            )
+            if any(
+                side > self.params.outcome_side_threshold_filter_threshold
+                for side in bet.outcomeTokenMarginalPrices
+            ):
+                return "outcome_skew"
+
+        if (
+            self.params.is_running_on_polymarket
+            and self.params.exclude_neg_risk_markets
+            and bet.neg_risk
+        ):
+            msg = f"Sampled bet {bet.id} is a negRisk market, skipping"
+            self.pool_logger.info(msg)
+            return "neg_risk"
+        return None
+
+    def _sample(self) -> Optional[int]:
+        """Sample a bet, mark it as processed, and return its index."""
+        # modify time "NOW" in benchmarking mode
+        if self.benchmarking_mode.enabled:
+            safe_voting_range = (
+                self.params.opening_margin + self.params.safe_voting_range
+            )
+            now = self.shared_state.get_simulated_now_timestamp(
+                self.bets, safe_voting_range
+            )
+            self.context.logger.info(f"Simulating date: {datetime.fromtimestamp(now)}")
+        else:
+            now = self.synced_timestamp
+
+        available_bets, held_note = self._processable_bets(now)
+        if not available_bets:
+            return None
+
+        if self.benchmarking_mode.enabled:
+            idx = self._sampling_benchmarking_bet(available_bets)
+            if not idx:
                 return None
 
+        available_bets = self._drop_disabled_tags(available_bets)
+        if not available_bets:
+            return None
+
+        available_bets = self._drop_ungated(available_bets, now)
+        if not available_bets:
+            return None
+
         # In-loop drop counters (per-iteration sequential funnel: zero_liq →
-        # outcome_skew → neg_risk). Emitted as [POLYSTRAT] roll-up rows at
+        # outcome_skew → neg_risk). Emitted as venue-tagged roll-up rows at
         # both exit paths.
         in_loop_iterations = 0
         in_loop_zero_liq = 0
@@ -435,55 +646,30 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             idx = self._sampled_bet_idx(available_bets)
             sampled_bet = self.bets[idx]
 
-            # Check liquidity
-            liquidity = sampled_bet.scaledLiquidityMeasure
-            if liquidity == 0:
-                msg = f"Sampled bet {sampled_bet.id} has zero liquidity, skipping"
-                self.context.logger.warning(msg)
+            reason = self._pick_filter_reason(sampled_bet)
+            if reason is not None:
                 available_bets.remove(sampled_bet)
-                in_loop_zero_liq += 1
-                continue
-
-            # This is to avoid sampling bets where the market is already heavily
-            # skewed towards one outcome, results in unfavorable risk to reward ratio
-            if self.params.is_outcome_side_threshold_filter_enabled:
-                self.context.logger.info(
-                    f"Sampled bet {sampled_bet.id} has liquidity {liquidity} and outcome token marginal prices {sampled_bet.outcomeTokenMarginalPrices}"
-                )
-                if any(
-                    side > self.params.outcome_side_threshold_filter_threshold
-                    for side in sampled_bet.outcomeTokenMarginalPrices
-                ):
-                    available_bets.remove(sampled_bet)
-                    in_loop_skew += 1
-                    continue
-
-            if (
-                self.params.is_running_on_polymarket
-                and self.params.exclude_neg_risk_markets
-                and sampled_bet.neg_risk
-            ):
-                msg = f"Sampled bet {sampled_bet.id} is a negRisk market, skipping"
-                self.context.logger.info(msg)
-                available_bets.remove(sampled_bet)
-                in_loop_neg_risk += 1
+                in_loop_zero_liq += reason == "zero_liq"
+                in_loop_skew += reason == "outcome_skew"
+                in_loop_neg_risk += reason == "neg_risk"
                 continue
 
             # Valid bet found
+            liquidity = sampled_bet.scaledLiquidityMeasure
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_zero_liq "
+                f"{self.venue_tag} filter=in_loop_zero_liq "
                 f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
                 f"kept={in_loop_iterations - in_loop_zero_liq}"
             )
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_outcome_skew "
+                f"{self.venue_tag} filter=in_loop_outcome_skew "
                 f"input={in_loop_iterations - in_loop_zero_liq} "
                 f"dropped={in_loop_skew} "
                 f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
             )
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_neg_risk "
+                f"{self.venue_tag} filter=in_loop_neg_risk "
                 f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
                 f"dropped={in_loop_neg_risk} kept=1"
             )
@@ -493,24 +679,97 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # No valid bets found
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_zero_liq "
+            f"{self.venue_tag} filter=in_loop_zero_liq "
             f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
             f"kept={in_loop_iterations - in_loop_zero_liq}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_outcome_skew "
+            f"{self.venue_tag} filter=in_loop_outcome_skew "
             f"input={in_loop_iterations - in_loop_zero_liq} "
             f"dropped={in_loop_skew} "
             f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_neg_risk "
+            f"{self.venue_tag} filter=in_loop_neg_risk "
             f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
             f"dropped={in_loop_neg_risk} kept=0"
         )
         msg = "No valid bets found after liquidity validation!"
-        self.context.logger.warning(msg)
+        self.context.logger.warning(msg + held_note)
         return None
+
+    @classmethod
+    def _side_rejection(
+        cls,
+        asks: List[Dict[str, Any]],
+        bids: List[Dict[str, Any]],
+        lo: float,
+        hi: float,
+    ) -> Optional[str]:
+        """Get why one side of a book cannot take a bet, `None` when it can.
+
+        :param asks: the side's asks.
+        :param bids: the side's bids.
+        :param lo: the lowest accepted spread.
+        :param hi: the highest accepted spread.
+        :return: the reason, or `None`.
+        """
+        best_ask = min((float(a["price"]) for a in asks), default=None)
+        if best_ask is None:
+            return "no asks"
+        if best_ask >= MAX_BETTABLE_ASK:
+            return f"best ask {best_ask}"
+        spread = cls.bid_ask_spread(asks, bids) if bids else None
+        if spread is not None and not lo <= spread <= hi:
+            return f"spread {spread:.3f}"
+        return None
+
+    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether a side of a Polymarket book could take a bet; True when unreadable.
+
+        :param bet: the sampled bet.
+        :yield: None
+        :return: whether the book can take a bet.
+        """
+        lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
+        reasons = []
+        for side, token_id in (bet.outcome_token_ids or {}).items():
+            try:
+                book, _ = yield from self._fetch_orderbook(token_id)
+                if book is None:
+                    return True
+                asks, bids = book.get("asks") or [], book.get("bids") or []
+                reason = self._side_rejection(asks, bids, lo, hi)
+            except (KeyError, TypeError, ValueError) as exc:
+                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc}")
+                return True
+            if reason is None:
+                return True
+            reasons.append(f"{side}: {reason}")
+        self.context.logger.info(
+            f"Book of {bet.id} cannot take a bet "
+            f"({'; '.join(reasons) or 'no token ids'}), skipped before the mech."
+        )
+        return False
+
+    def _clob_reachable(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether a fetch of the bet's first order book reaches the CLOB.
+
+        :param bet: the sampled bet, whose first outcome token's book is the probe.
+        :yield: None
+        :return: whether the CLOB was reached (not flagged unreachable).
+        """
+        token_id = next(iter((bet.outcome_token_ids or {}).values()), None)
+        reached = False
+        if token_id is not None:
+            _, reached = yield from self._fetch_orderbook(token_id)
+        if not reached:
+            self.context.logger.warning(
+                f"Polymarket's CLOB unreachable after "
+                f"{self.shared_state.orderbook_failures} failed fetches in a row: "
+                "no market this period."
+            )
+        return reached
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
@@ -528,10 +787,81 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return benchmarking_finished, day_increased
 
+    def _publish_no_markets_left(self, idx: Optional[int]) -> None:
+        """Tell Pearl whether a staked Omen agent has nothing left to try or redeem.
+
+        :param idx: the index of the sampled bet, ``None`` when none was picked.
+        """
+        epoch_start = self.synchronized_data.epoch_start
+        if (
+            self.params.is_running_on_polymarket
+            or self.benchmarking_mode.enabled
+            or not epoch_start
+        ):
+            return
+        now = self.synced_timestamp
+        multi_bets_active = self.params.use_multi_bets_mode
+        retry_pending = any(
+            self._classify_processable_bet(bet, now, multi_bets_active)
+            == PoolRejection.COOLING
+            for bet in self.bets
+        )
+        # A sell review samples only held markets, so its empty pick says
+        # nothing about untried ones and the agent is reported as not idle.
+        no_markets_left = (
+            not self.review_bets_for_selling
+            and idx is None
+            and self.synchronized_data.found_nothing_to_redeem
+            and not retry_pending
+        )
+        self.context.logger.info(f"{self.venue_tag} {no_markets_left=}")
+        try:
+            set_no_markets_left(
+                self.params.store_path,
+                epoch_start,
+                no_markets_left,
+                self.context.logger,
+            )
+        except OSError as e:
+            self.context.logger.error(f"Failed to publish no_markets_left: {e}")
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
+            # The stamp keeps a skipped market out for the cooldown. Each agent
+            # reads the books itself, so this assumes a single-agent service.
+            checks_left = BOOK_CHECK_CANDIDATES
+            if (
+                not self.params.is_running_on_polymarket
+                or self.benchmarking_mode.enabled
+            ):
+                checks_left = 0
+            # No market, and no stamp, until the CLOB answers again: picking
+            # a market here would pay the mech for a prediction it cannot use.
+            if (
+                idx is not None
+                and checks_left
+                and self.shared_state.is_orderbook_unavailable(
+                    self.params.orderbook_unavailable_threshold
+                )
+                and not (yield from self._clob_reachable(self.bets[idx]))
+            ):
+                idx = None
+            while (
+                idx is not None and checks_left and not self.bets[idx].invested_amount
+            ):
+                checks_left -= 1
+                bet = self.bets[idx]
+                if (yield from self._book_can_take_bet(bet)):
+                    break
+                bet.processed_timestamp = self.synced_timestamp
+                idx = self._sample() if checks_left else None
+                if not checks_left:
+                    self.context.logger.warning(
+                        f"{BOOK_CHECK_CANDIDATES} markets failed the book check: "
+                        "no market this period."
+                    )
             benchmarking_finished = None
             day_increased = None
 
@@ -542,6 +872,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     bet.queue_status = bet.queue_status.move_to_fresh()
                     bet.queue_status = bet.queue_status.move_to_process()
 
+            self._publish_no_markets_left(idx)
             self.store_bets()
 
             if idx is None:

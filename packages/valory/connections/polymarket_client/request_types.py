@@ -40,6 +40,8 @@ class RequestType(Enum):
     SET_APPROVAL = "set_approval"
     CHECK_APPROVAL = "check_approval"
     FETCH_ORDER_BOOK = "fetch_order_book"
+    # Which of the given Gamma market ids Gamma lists as closed.
+    CHECK_CLOSED_MARKETS = "check_closed_markets"
     SELL_POSITION = "sell_position"
     GET_ORDER = "get_order"
     # CLOB v2 DepositWallet operations. These route through the
@@ -51,3 +53,7 @@ class RequestType(Enum):
     # request; the behaviour drives the retry/backoff loop). When the polled
     # tx is a DW deploy, the response also carries the discovered DW address.
     RELAYER_TX = "relayer_tx"
+
+
+# Marks an error response for which the CLOB was down, blocked or not reached.
+CLOB_UNREACHABLE = "clob_unreachable"

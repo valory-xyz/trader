@@ -29,6 +29,12 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound,
 )
+from packages.valory.skills.agent_topup_abci.rounds import (
+    AgentTopUpAbciApp,
+    AgentTopUpRound,
+    AgentTopUpTxPreparedRound,
+    FinishedAgentTopUpRound,
+)
 from packages.valory.skills.chatui_abci.rounds import (
     ChatuiAbciApp,
     ChatuiLoadRound,
@@ -47,15 +53,13 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
     CheckBenchmarkingModeRound,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_receive import (
-    DecisionReceiveRound,
-)
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
+    FailedAgentTopUpTxRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedOmenWithdrawRound,
@@ -66,6 +70,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketWithdrawTopUpTxPreparationRound,
     FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
+    FinishedRankingRequestRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
@@ -97,6 +102,9 @@ from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import
     PostOmenWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
+from packages.valory.skills.decision_maker_abci.states.ranking import (
+    RankingReceiveRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
 )
@@ -144,6 +152,7 @@ from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
     CheckpointCallPreparedRound,
     FinishedStakingRound,
+    ServiceEvictedRound,
     StakingAbciApp,
 )
 from packages.valory.skills.termination_abci.rounds import (
@@ -161,6 +170,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
+    FinishedAgentTopUpTxRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedOffchainMechDepositSettledRound,
@@ -180,7 +190,11 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 )
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: FetchPerformanceDataRound,
+    FinishedRegistrationRound: AgentTopUpRound,
+    AgentTopUpTxPreparedRound: PreTxSettlementRound,
+    FinishedAgentTopUpTxRound: AgentTopUpRound,
+    FailedAgentTopUpTxRound: FetchPerformanceDataRound,
+    FinishedAgentTopUpRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
     FinishedChatuiLoadRound: MechVersionDetectionRound,
     FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
@@ -208,9 +222,10 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedSubscriptionTxRound: RandomnessRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestRound: MechRequestRound,
+    FinishedRankingRequestRound: MechRequestRound,
     FinishedMechRequestRound: PreTxSettlementRound,
     FinishedMechRequestTxRound: MechResponseRound,
-    FinishedMechResponseRound: DecisionReceiveRound,
+    FinishedMechResponseRound: RankingReceiveRound,
     FinishedMechResponseTimeoutRound: HandleFailedTxRound,
     # Mech-request skip, no-decision, and the off-chain Polymarket bet exit
     # all go straight to the staking checkpoint; any winnings produced this
@@ -291,9 +306,11 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
+    # An evicted service keeps redeeming instead of exiting; see the stop vote.
+    ServiceEvictedRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
-    FinishedResetAndPauseRound: FetchPerformanceDataRound,
+    FinishedResetAndPauseRound: AgentTopUpRound,
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
     # this has no effect, because the `BenchmarkingDoneRound` is terminal
     BenchmarkingDoneRound: ResetAndPauseRound,
@@ -310,6 +327,7 @@ termination_config = BackgroundAppConfig(
 TraderAbciApp = chain(
     (
         AgentRegistrationAbciApp,
+        AgentTopUpAbciApp,
         AgentPerformanceSummaryAbciApp,
         ChatuiAbciApp,
         DecisionMakerAbciApp,

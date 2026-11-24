@@ -98,6 +98,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
                 store_dir=Path(self.context.params.store_path),
                 filename=CHATUI_PARAM_STORE,
                 logger=self.context.logger,
+                on_finished=self._record_positions_sold,
             )
         return self._store_cache
 

@@ -19,6 +19,8 @@
 
 """Tests for the DepositWallet funder/sweep additions in PolymarketWithdrawBehaviour."""
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
@@ -187,7 +189,7 @@ class TestSweepDwToSafe:
         assert called == []
         b.context.logger.warning.assert_called()
 
-    def test_sellable_token_ids_parses_and_skips(self) -> None:
+    def test_asset_token_ids_parses_and_skips(self) -> None:
         """Parseable asset ids are kept as ints; unparseable ones are skipped."""
         b = _make_behaviour()
         sellable = [
@@ -197,7 +199,8 @@ class TestSweepDwToSafe:
             {},
             {"asset": "43"},
         ]
-        assert b._sellable_token_ids(sellable) == [42, 43]
+        assert b._asset_token_ids(sellable) == [42, 43]
+        assert b.context.logger.warning.call_count == 3
 
     def test_none_response_warns(self) -> None:
         """A missing sweep response logs a warning (non-fatal)."""
@@ -216,3 +219,23 @@ class TestSweepDwToSafe:
         b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
         _run(b._sweep_dw_to_safe())
         b.context.logger.warning.assert_called()
+
+
+class TestPositionsSoldOnFinish:
+    """``_set_state`` reports the sell-off once the sweep ends."""
+
+    def test_terminal_state_reports_the_sweep(self, tmp_path: Path) -> None:
+        """Complete or errored hands the sweep's fills and errors to the feed writer."""
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = tmp_path
+        behaviour._record_positions_sold = MagicMock()  # type: ignore[method-assign]
+        fills = [{"token_id": "1", "shares_sold": 4, "fill_price": 0.5}]
+        errors = [{"token_id": "", "reason": "fetch failed"}]
+        (tmp_path / "chatui_param_store.json").write_text(
+            json.dumps({"withdrawal_fills": fills, "withdrawal_errors": errors})
+        )
+
+        behaviour._set_state("selling")
+        behaviour._record_positions_sold.assert_not_called()  # type: ignore[attr-defined]
+        behaviour._set_state("complete")
+        behaviour._record_positions_sold.assert_called_once_with(fills, errors, True)  # type: ignore[attr-defined]

@@ -35,8 +35,8 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     chain_id_for_platform,
     fetch_scored_rows,
     find_latest_row_for_title,
-    is_flag_enabled,
     per_position_lookup_window,
+    uses_mech_analytics,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     BetStatus,
@@ -594,8 +594,8 @@ class PolymarketPredictionsFetcher(
         # field from mech-analytics' scored rows so per-position tool
         # attribution keeps working.
         params = getattr(self.context, "params", None)
-        if is_flag_enabled(params):
-            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+        if uses_mech_analytics(params):
+            assert params is not None  # narrowed by uses_mech_analytics  # nosec B101
             since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
@@ -679,8 +679,8 @@ class PolymarketPredictionsFetcher(
         # ``info_utility`` is a nullable column added by mech-analytics
         # PR #14; downstream ``.get(field, 0)`` handles a NULL as 0.
         params = getattr(self.context, "params", None)
-        if is_flag_enabled(params):
-            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+        if uses_mech_analytics(params):
+            assert params is not None  # narrowed by uses_mech_analytics  # nosec B101
             since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
@@ -777,6 +777,14 @@ class PolymarketPredictionsFetcher(
         except Exception as e:
             self.logger.error(f"Error loading multi_bets.json: {e}")
             return []
+
+    def load_market_slugs(self, store_path: str) -> Dict[str, str]:
+        """Return the slug of each market in multi_bets.json by its condition id."""
+        return {
+            bet["condition_id"]: bet["slug"]
+            for bet in self._load_multi_bets_data(store_path)
+            if isinstance(bet, dict) and bet.get("condition_id") and bet.get("slug")
+        }
 
     def _load_agent_performance_data(self, store_path: str) -> Dict:
         """Load data from agent_performance.json file."""

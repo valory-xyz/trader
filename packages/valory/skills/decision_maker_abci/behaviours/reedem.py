@@ -111,7 +111,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
                 break
 
         if self._fetch_status == FetchStatus.SUCCESS:
-            block_number = block.get("id", "")
+            block_number = block.get(BLOCK_NUMBER_KEY, "")
             if block_number.isdigit():
                 self.earliest_block_number = int(block_number)
 
@@ -198,6 +198,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
         self._current_redeem_info: Optional[Trade] = None
+        # a claimable position failed to prepare in the last `_prepare_safe_tx`
+        self._preparation_failed: bool = False
         self._expected_winnings: int = 0
         self._history_hash: bytes = ZERO_BYTES
         self._claim_winnings_simulation_ok: bool = False
@@ -361,14 +363,21 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self,
     ) -> Generator:
         """Fetch the trades from all the prediction markets and store them as redeeming information."""
+        self.redeeming_progress.trades_fetch_failed = False
         while True:
             can_proceed = self._prepare_fetching()
             if not can_proceed:
                 break
 
             trades_market_chunk = yield from self._fetch_redeem_info()
+            # read before the block lookups below overwrite the fetch state
+            page_incomplete = self._call_failed
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
+            # a failed page that is retried is refetched in full; it leaves the
+            # trades partial only once the loop gives up or moves past it
+            if page_incomplete and self._fetch_status != FetchStatus.IN_PROGRESS:
+                self.redeeming_progress.trades_fetch_failed = True
 
         # truncate the trades, otherwise logs get too big
         trades_str = str(self.trades)[:MAX_LOG_SIZE]
@@ -498,6 +507,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         # get the user's positions
         user_positions = yield from self.fetch_user_positions(safe_address)
         if user_positions is None:
+            return False
+
+        if trades and not user_positions:
+            self.context.logger.warning(
+                "The conditional tokens subgraph has no positions for a Safe with "
+                "trades. It may be lagging, so the redeem check will retry."
+            )
             return False
 
         # process the positions
@@ -797,6 +813,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         success = yield from self._prepare_single_redeem()
         if not success:
+            self._preparation_failed = True
             return False
 
         self._expected_winnings += self.current_claimable_amount
@@ -831,6 +848,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
 
         winnings_found = 0
+        self._preparation_failed = False
 
         for redeem_candidate in self.trades:
             is_claimable = yield from self._process_candidate(redeem_candidate)
@@ -929,7 +947,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:
         """The act of the agent while running in normal mode."""
-        if not self.redeeming_progress.check_started:
+        # progress kept from an earlier run holds the trades of an earlier fetch,
+        # which can miss a market won since; it is reset only by a redeem tx
+        loaded_progress = self.redeeming_progress.check_started
+        if not loaded_progress:
             yield from self._get_redeem_info()
             self._store_progress()
         else:
@@ -941,13 +962,36 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
 
         serialized_tools = json.dumps(list(self.mech_tools))
-        payload = RedeemPayload(self.context.agent_address, mech_tools=serialized_tools)
-        if self.redeeming_progress.cleaned:
-            redeem_tx_hex = yield from self._prepare_safe_tx()
-            if redeem_tx_hex is not None:
-                payload = self._build_payload(redeem_tx_hex)
+        if not self.redeeming_progress.cleaned:
+            # the check failed, which says nothing about what is left to redeem
+            return RedeemPayload(
+                self.context.agent_address, mech_tools=serialized_tools
+            )
 
-        return payload
+        redeem_tx_hex = yield from self._prepare_safe_tx()
+        if redeem_tx_hex is not None:
+            return self._build_payload(redeem_tx_hex)
+        # a missed trade or a position that failed to prepare may still pay out
+        incomplete = (
+            loaded_progress
+            or self.redeeming_progress.trades_fetch_failed
+            or self._preparation_failed
+        )
+        if incomplete:
+            if loaded_progress:
+                reason = "the trades come from an earlier run's fetch"
+            elif self.redeeming_progress.trades_fetch_failed:
+                reason = "the trades fetch ended incomplete"
+            else:
+                reason = "a claimable position failed to prepare"
+            self.context.logger.warning(
+                f"No winnings found, but {reason}: not reporting nothing to redeem."
+            )
+        return RedeemPayload(
+            self.context.agent_address,
+            mech_tools=serialized_tools,
+            nothing_to_redeem=None if incomplete else True,
+        )
 
     def async_act(self) -> Generator:
         """Do the action."""

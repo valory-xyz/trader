@@ -35,15 +35,12 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     SynchronizedData,
 )
 
-# Stamp on the local allowances-persistence file. Bumping this invalidates an
-# older file so the agent re-issues approvals after a contract-set change.
-# Bumped to "v3" when the redeem path moved from raw CTF / NegRiskAdapter to
-# CtfCollateralAdapter / NegRiskCtfCollateralAdapter (which require their own
-# setApprovalForAll on the CTF). Bumped to "v4" when both collateral-adapter
-# addresses were swapped (deadline 2026-05-01 15:00 UTC); pre-existing v3
-# stamps must be invalidated so setApprovalForAll runs against the new
-# adapter addresses.
-POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v4"
+# Bump when the Safe approval set changes; older stamps re-enter the approval round.
+POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v5"
+
+# Bump when the DepositWallet approval set changes, and revisit the re-send
+# branch in ``_provision_deposit_wallet`` that adds only the Protocol V2 calls.
+DW_APPROVALS_VERSION = 2
 
 
 class CheckBenchmarkingModeRound(VotingRound):
@@ -77,12 +74,6 @@ class CheckBenchmarkingModeRound(VotingRound):
                         allowances_set
                         and file_version == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
                     ):
-                        # Allowances are current, but setup may still be
-                        # required: skipping is only safe when a DepositWallet
-                        # is recorded under the current agent EOA. A missing DW
-                        # (fresh / grandfathered service) or an owner mismatch
-                        # (agent EOA rotation) re-enters SET_APPROVAL to
-                        # (re)provision and (re)approve it.
                         if self._deposit_wallet_ready():
                             self.context.logger.info(
                                 "Polymarket allowances set and DepositWallet "
@@ -94,10 +85,11 @@ class CheckBenchmarkingModeRound(VotingRound):
                                 Event.BENCHMARKING_DISABLED,
                             )
                         self.context.logger.info(
-                            "Polymarket allowances set but no DepositWallet is "
-                            "recorded for the current agent EOA (fresh / "
-                            "grandfathered service or EOA rotation); proceeding "
-                            "to SET_APPROVAL to (re)provision it."
+                            "Polymarket allowances set but no approved "
+                            "DepositWallet is recorded for the current agent EOA "
+                            "(fresh / grandfathered service, EOA rotation or "
+                            "outdated DepositWallet approvals); proceeding to "
+                            "SET_APPROVAL to (re)provision it."
                         )
                     elif allowances_set:
                         self.context.logger.info(
@@ -127,17 +119,20 @@ class CheckBenchmarkingModeRound(VotingRound):
         return res
 
     def _deposit_wallet_ready(self) -> bool:
-        """Whether a DepositWallet is recorded for the current agent EOA.
+        """Whether an approved DepositWallet is recorded for the current agent EOA.
 
         The setup gate may only be skipped when, on top of allowances being
         recorded, a DepositWallet has been provisioned whose owner is the
-        current agent EOA. A missing record (fresh / grandfathered service) or
-        an owner mismatch (mnemonic-recovery rotation, which rotates the agent
-        EOA) must re-enter SET_APPROVAL so the DW is (re)provisioned and
+        current agent EOA and whose trading approvals are confirmed under
+        ``DW_APPROVALS_VERSION``. A missing record (fresh / grandfathered
+        service), an owner mismatch (mnemonic-recovery rotation, which rotates
+        the agent EOA) or approvals not confirmed under the current version
+        must re-enter SET_APPROVAL so the DW is (re)provisioned and
         (re)approved under the current EOA.
 
         :return: True if ``deposit_wallet.json`` records a DepositWallet owned
-            by the current agent EOA.
+            by the current agent EOA with ``approvals_done`` set and
+            ``approvals_version`` equal to ``DW_APPROVALS_VERSION``.
         """
         dw_path = Path(self.context.params.store_path) / "deposit_wallet.json"
         try:
@@ -148,4 +143,9 @@ class CheckBenchmarkingModeRound(VotingRound):
         dw_address = dw_data.get("dw_address")
         dw_owner = str(dw_data.get("dw_owner") or "")
         agent_eoa = self.context.agent_address
-        return bool(dw_address) and dw_owner.lower() == agent_eoa.lower()
+        return (
+            bool(dw_address)
+            and dw_owner.lower() == agent_eoa.lower()
+            and dw_data.get("approvals_done") is True
+            and dw_data.get("approvals_version") == DW_APPROVALS_VERSION
+        )

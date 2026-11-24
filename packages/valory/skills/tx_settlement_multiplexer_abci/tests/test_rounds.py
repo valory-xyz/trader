@@ -31,6 +31,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
@@ -58,6 +59,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     Event,
     FailedMultiplexerRound,
+    FinishedAgentTopUpTxRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedOffchainMechDepositSettledRound,
@@ -540,6 +542,7 @@ class TestPostTxSettlementRoundEndBlock:
             (MechPurchaseSubscriptionRound, Event.SUBSCRIPTION_DONE),
             (PolymarketSetApprovalRound, Event.SET_APPROVAL_DONE),
             (PolymarketSwapUsdcRound, Event.SWAP_DONE),
+            (AgentTopUpRound, Event.AGENT_TOPUP_DONE),
         ],
     )
     def test_submitter_to_event_mapping(
@@ -607,6 +610,7 @@ class TestDegenerateRounds:
             FinishedSetApprovalTxRound,
             FailedMultiplexerRound,
             FinishedPolymarketSwapTxRound,
+            FinishedAgentTopUpTxRound,
         ],
     )
     def test_is_degenerate_round_subclass(self, round_cls: type) -> None:
@@ -626,6 +630,7 @@ class TestDegenerateRounds:
             FinishedSetApprovalTxRound,
             FailedMultiplexerRound,
             FinishedPolymarketSwapTxRound,
+            FinishedAgentTopUpTxRound,
         ],
     )
     def test_initialization(self, round_cls: type) -> None:
@@ -691,6 +696,7 @@ class TestTxSettlementMultiplexerAbciApp:
                 Event.TOP_UP_DONE: FinishedPolymarketTopUpTxRound,
                 Event.WITHDRAW_TOP_UP_DONE: FinishedPolymarketWithdrawTopUpTxRound,
                 Event.OFFCHAIN_MECH_DEPOSIT_SETTLED: FinishedOffchainMechDepositSettledRound,
+                Event.AGENT_TOPUP_DONE: FinishedAgentTopUpTxRound,
                 Event.ROUND_TIMEOUT: PostTxSettlementRound,
                 Event.UNRECOGNIZED: FailedMultiplexerRound,
             },
@@ -708,6 +714,7 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedPolymarketWithdrawTopUpTxRound: {},
             FinishedStakingTxRound: {},
             FinishedOffchainMechDepositSettledRound: {},
+            FinishedAgentTopUpTxRound: {},
             FailedMultiplexerRound: {},
         }
         assert abci_app.transition_function == expected
@@ -729,6 +736,7 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedSubscriptionTxRound,
             FinishedSetApprovalTxRound,
             FinishedOffchainMechDepositSettledRound,
+            FinishedAgentTopUpTxRound,
             FailedMultiplexerRound,
         }
         assert abci_app.final_states == expected_final
@@ -763,12 +771,13 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedSubscriptionTxRound: set(),
             FinishedSetApprovalTxRound: set(),
             FinishedOffchainMechDepositSettledRound: set(),
+            FinishedAgentTopUpTxRound: set(),
         }
         assert abci_app.db_post_conditions == expected
 
     def test_final_states_count(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
-        """Test that there are exactly 15 final states."""
-        assert len(abci_app.final_states) == 15
+        """Test that there are exactly 16 final states."""
+        assert len(abci_app.final_states) == 16
 
     def test_degenerate_rounds_have_empty_transitions(
         self, abci_app: TxSettlementMultiplexerAbciApp

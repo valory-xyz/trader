@@ -595,7 +595,6 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
     @pytest.mark.parametrize(
         ("overrides", "reason"),
         [
-            ({"settled_at": "2024-01-15T11:59:59Z"}, "eligible_since="),
             ({"has_remaining_shares": False}, "has_remaining_shares=False"),
             ({"has_remaining_shares": None}, "has_remaining_shares=None"),
         ],
@@ -616,6 +615,21 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
         message = logger.info.call_args[0][0]
         assert "skipped" in message
         assert reason in message
+
+    def test_wins_settled_before_watermark_are_logged_as_one_count(self) -> None:
+        """Qualifying wins settled before the watermark log one count, not a line each."""
+        logger = MagicMock()
+        early = [self._won_bet(f"early{i}", "2024-01-15T11:59:59Z") for i in range(20)]
+        result = self._make_checker().update_achievements(
+            Achievements(eligible_since=self.WATERMARK),
+            prediction_history=PredictionHistory(items=early),
+            logger=logger,
+        )
+        assert result is False
+        logger.info.assert_called_once()
+        message = logger.info.call_args[0][0]
+        assert "skipping 20 qualifying bets" in message
+        assert f"eligible_since={self.WATERMARK}" in message
 
     def test_non_qualifying_and_recorded_bets_are_not_logged(self) -> None:
         """Bets below the threshold or already recorded produce no skip log."""

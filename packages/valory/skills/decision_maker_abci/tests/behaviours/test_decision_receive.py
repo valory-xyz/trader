@@ -22,15 +22,28 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_NO_MECH_RESPONSE,
+    SKIP_NO_TRADE,
+    SKIP_ORDERBOOK_UNAVAILABLE,
+    SKIP_REBET_NOT_ALLOWED,
+    SKIP_SPREAD,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.models import LiquidityInfo
+from packages.valory.skills.decision_maker_abci.models import (
+    LiquidityInfo,
+    SharedState,
+)
 from packages.valory.skills.market_manager_abci.bets import (
     PredictionResponse,
     QueueStatus,
@@ -767,60 +780,57 @@ class TestRebetAllowed:
 # ---------------------------------------------------------------------------
 
 
+READABLE_BOOK: Dict[str, Any] = {"asks": [], "bids": []}
+UNREACHABLE_FETCH: Dict[str, Any] = {
+    "error": "Connection reset by peer",
+    CLOB_UNREACHABLE: True,
+}
+ANSWERED_FETCH: Dict[str, Any] = {"error": "No orderbook exists"}
+
+
 class TestFetchOrderbook:
     """Tests for _fetch_orderbook."""
 
-    def test_success(self) -> None:
-        """Should return parsed orderbook on success."""
+    @pytest.mark.parametrize(
+        "response, book, reached, failures",
+        [
+            (READABLE_BOOK, READABLE_BOOK, True, 0),
+            (None, None, False, 3),
+            (UNREACHABLE_FETCH, None, False, 3),
+            (ANSWERED_FETCH, None, True, 0),
+            ("unexpected", None, True, 0),
+        ],
+    )
+    def test_fetch_is_counted(
+        self, response: Any, book: Any, reached: bool, failures: int
+    ) -> None:
+        """Only a fetch that cannot reach the CLOB counts as a failure."""
         behaviour = _make_behaviour()
-        ob_data = {"asks": [{"price": "0.5", "size": "10"}], "bids": []}
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return ob_data  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
+        state = behaviour.context.state
+        state.orderbook_failures = 2
+        state.record_orderbook_fetch.side_effect = (
+            lambda reached, timestamp: SharedState.record_orderbook_fetch(
+                state, reached, timestamp
+            )
+        )
+        state.record_orderbook_response.side_effect = (
+            lambda response, timestamp: SharedState.record_orderbook_response(
+                state, response, timestamp
+            )
+        )
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda _payload: _return_gen(response)
+        )
         gen = behaviour._fetch_orderbook("token_123")
+        result = None
         try:
-            next(gen)
             while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value == ob_data
-
-    def test_none_response(self) -> None:
-        """Should return None when response is None."""
-        behaviour = _make_behaviour()
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return None  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
-        gen = behaviour._fetch_orderbook("token_123")
-        try:
-            next(gen)
-            while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value is None
-
-    def test_error_response(self) -> None:
-        """Should return None when response has error key."""
-        behaviour = _make_behaviour()
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return {"error": "API timeout"}  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
-        gen = behaviour._fetch_orderbook("token_123")
-        try:
-            next(gen)
-            while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value is None
+                next(gen)
+        except StopIteration as stop:
+            result = stop.value
+        assert result == (book, reached)
+        assert state.orderbook_failures == failures
+        assert behaviour.context.logger.warning.called is (book is None)
 
 
 class TestIsProfitable:
@@ -893,7 +903,7 @@ class TestIsProfitable:
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda _tid: _return_gen(None),
+                side_effect=lambda _tid: _return_gen((None, True)),
             ).start()
 
         return behaviour, pred, bet
@@ -913,9 +923,10 @@ class TestIsProfitable:
 
     def test_strategy_returns_zero(self) -> None:
         """Strategy returns bet_amount=0 -> not profitable."""
-        behaviour, pred, _ = self._setup_behaviour(
+        behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None
         )
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
@@ -923,6 +934,7 @@ class TestIsProfitable:
         assert is_profitable is False
         assert bet_amount == 0
         assert strategy_vote is None
+        record_skip.assert_called_once_with(bet, SKIP_NO_TRADE)
 
     def test_strategy_returns_none_vote(self) -> None:
         """Strategy returns vote=None -> not profitable."""
@@ -964,6 +976,67 @@ class TestIsProfitable:
         is_profitable, bet_amount, strategy_vote = result
         assert is_profitable is True
         assert strategy_vote == 1  # strategy's NO, not mech's YES
+
+    @pytest.mark.parametrize(
+        "token_ids, fetches",
+        [
+            ({"Yes": "yes_token", "No": "no_token"}, [(None, False), (None, False)]),
+            ({"Yes": "yes_token"}, [(None, False)]),
+        ],
+    )
+    def test_no_bet_without_reaching_the_clob_is_no_decline(
+        self, token_ids: Dict[str, str], fetches: List[Any]
+    ) -> None:
+        """A no-bet that could not reach the CLOB gets its own skip reason."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
+        )
+        bet.outcome_token_ids = token_ids
+        fetched = iter(fetches)
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen(next(fetched)),
+        ).start()
+        behaviour.context.state.orderbook_fetch_failed = False
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        assert result == (False, 0, None)
+        record_skip.assert_called_once_with(bet, SKIP_ORDERBOOK_UNAVAILABLE)
+        assert behaviour.context.state.orderbook_fetch_failed is True
+
+    @pytest.mark.parametrize(
+        "yes_fetch, no_fetch",
+        [
+            ((READABLE_BOOK, True), (READABLE_BOOK, True)),
+            ((None, False), (READABLE_BOOK, True)),
+            ((READABLE_BOOK, True), (None, False)),
+            ((None, True), (None, True)),
+        ],
+    )
+    def test_no_bet_with_the_clob_reached_is_a_decline(
+        self, yes_fetch: Any, no_fetch: Any
+    ) -> None:
+        """A no-bet with the CLOB answering, even without a book, stays a decline."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
+        )
+        fetches = iter([yes_fetch, no_fetch])
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen(next(fetches)),
+        ).start()
+        # left over from an earlier decision that never reached the blacklisting
+        behaviour.context.state.orderbook_fetch_failed = True
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
+        self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        record_skip.assert_called_once_with(bet, SKIP_NO_TRADE)
+        assert behaviour.context.state.orderbook_fetch_failed is False
 
     def test_clob_fetches_both_orderbooks(self) -> None:
         """CLOB market type triggers _fetch_orderbook for both tokens."""
@@ -1008,7 +1081,7 @@ class TestIsProfitable:
         patch.object(
             behaviour,
             "_fetch_orderbook",
-            side_effect=lambda _tid: _return_gen(ob_data),
+            side_effect=lambda _tid: _return_gen((ob_data, True)),
         ).start()
 
         def mock_get_bet_amount(*_args: Any, **_kwargs: Any) -> Generator:
@@ -1065,7 +1138,7 @@ class TestIsProfitable:
         def mock_fetch(_tid: str) -> Generator:
             call_count["n"] += 1
             yield
-            return ob_yes if call_count["n"] == 1 else ob_no  # type: ignore[return-value]
+            return (ob_yes if call_count["n"] == 1 else ob_no), True  # type: ignore[return-value]
 
         patch.object(behaviour, "_fetch_orderbook", side_effect=mock_fetch).start()
 
@@ -1090,16 +1163,18 @@ class TestIsProfitable:
 
     def test_rebet_rejected(self) -> None:
         """Strategy approves bet but rebet_allowed returns False."""
-        behaviour, pred, _ = self._setup_behaviour(
+        behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=500, strategy_vote=0
         )
         # Override rebet_allowed to return False
         patch.object(behaviour, "rebet_allowed", return_value=False).start()
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
         is_profitable, bet_amount, _ = result
         assert is_profitable is False
+        record_skip.assert_called_once_with(bet, SKIP_REBET_NOT_ALLOWED)
 
     def test_clob_no_outcome_token_ids(self) -> None:
         """CLOB path with outcome_token_ids=None skips orderbook fetch."""
@@ -1192,14 +1267,14 @@ class TestIsProfitable:
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda _tid: _return_gen(ob),
+                side_effect=lambda _tid: _return_gen((ob, True)),
             ).start()
         else:
             books = {"token_yes_123": ob, "token_no_123": ob_no}
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda tid: _return_gen(books[tid]),
+                side_effect=lambda tid: _return_gen((books[tid], True)),
             ).start()
 
         def _mock_get_bet_amount(*_a: Any, **_k: Any) -> Generator:
@@ -1233,6 +1308,7 @@ class TestIsProfitable:
         behaviour, pred = self._setup_clob_with_book(
             ob, spread_min=0.02, spread_max=0.05
         )
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
@@ -1240,6 +1316,8 @@ class TestIsProfitable:
         assert is_profitable is False
         assert bet_amount == 0
         assert strategy_vote is None
+        record_skip.assert_called_once()
+        assert record_skip.call_args.args[1] == SKIP_SPREAD
 
     def test_spread_gate_inside_band_passes(self) -> None:
         """Spread inside band -> bet accepted."""
@@ -1845,9 +1923,13 @@ class TestAsyncAct:
 
         assert result is None
 
-    def test_prediction_response_none(self) -> None:
-        """Should handle None prediction_response gracefully."""
+    @pytest.mark.parametrize("selling_review", [False, True])
+    def test_prediction_response_none(self, selling_review: bool) -> None:
+        """Should handle None prediction_response; a sell review skips no market."""
         behaviour = _make_behaviour()
+        skipped_bet = MagicMock()
+        behaviour.get_active_sampled_bet = MagicMock(return_value=skipped_bet)  # type: ignore[method-assign]
+        behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
         behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
@@ -1875,12 +1957,24 @@ class TestAsyncAct:
                     ) as mock_bm:
                         mock_bm.return_value = MagicMock(enabled=False)
                         with patch.object(
-                            behaviour, "finish_behaviour", side_effect=mock_finish
+                            type(behaviour),
+                            "review_bets_for_selling_mode",
+                            new_callable=PropertyMock,
+                            return_value=selling_review,
                         ):
-                            gen = behaviour.async_act()
-                            self._run_generator(gen)
+                            with patch.object(
+                                behaviour, "finish_behaviour", side_effect=mock_finish
+                            ):
+                                gen = behaviour.async_act()
+                                self._run_generator(gen)
 
         behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
+        if selling_review:
+            behaviour._record_market_skipped.assert_not_called()  # type: ignore[attr-defined]
+        else:
+            behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
+                skipped_bet, SKIP_NO_MECH_RESPONSE
+            )
 
     def test_prediction_with_vote_not_selling_profitable(self) -> None:
         """Should process profitable bet when not in selling mode."""

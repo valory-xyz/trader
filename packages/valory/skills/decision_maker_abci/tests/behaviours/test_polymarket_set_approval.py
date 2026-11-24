@@ -20,13 +20,19 @@
 """Tests for PolymarketSetApprovalBehaviour."""
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
+
+import pytest
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketSetApprovalPayload,
+)
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
 )
 
 # ---------------------------------------------------------------------------
@@ -55,6 +61,7 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
     context = MagicMock()
     context.agent_address = "test_agent"
+    context.params.store_path = Path("/nonexistent")
     behaviour.__dict__["_context"] = context
 
     return behaviour
@@ -136,7 +143,7 @@ class TestPolymarketSetApprovalBehaviour:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock()
+            mock_params.return_value = MagicMock(store_path=Path("/nonexistent"))
 
             behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = (
                 False
@@ -201,6 +208,53 @@ class TestPolymarketSetApprovalBehaviour:
 
         assert len(set_approval_called) == 1
         assert len(payloads_sent) == 1
+
+    @pytest.mark.parametrize(
+        "allowances, builder_program_enabled, skipped",
+        [
+            ({"allowances_set": True}, True, True),
+            ({"allowances_set": True}, False, True),
+            ({"allowances_set": True, "clob_version": "v4"}, False, False),
+            ({"allowances_set": False}, False, False),
+            ("not json", False, False),
+        ],
+    )
+    def test_async_act_skips_safe_approvals_when_allowances_current(  # type: ignore[no-untyped-def]
+        self, tmp_path, allowances, builder_program_enabled, skipped
+    ) -> None:
+        """Current Safe allowances skip the Safe approvals, never the DepositWallet."""
+        if isinstance(allowances, dict):
+            allowances = json.dumps(
+                {"clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION, **allowances}
+            )
+        (tmp_path / "polymarket.json").write_text(allowances)
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = tmp_path
+        behaviour.context.params.polymarket_builder_program_enabled = (
+            builder_program_enabled
+        )
+        calls: list = []
+        behaviour.payload = None
+        behaviour._provision_deposit_wallet = lambda: _return_gen(calls.append("dw"))  # type: ignore[method-assign, func-returns-value]
+        behaviour._set_approval = lambda: _return_gen(calls.append("safe"))  # type: ignore[method-assign, func-returns-value]
+        behaviour._prepare_approval_tx = lambda: _return_gen(calls.append("safe"))  # type: ignore[method-assign, func-returns-value]
+        behaviour.finish_behaviour = lambda payload: _return_gen(calls.append(payload))  # type: ignore[method-assign, func-returns-value]
+        gen = behaviour.async_act()
+        try:
+            while True:
+                next(gen)
+        except StopIteration:
+            pass
+        payload = calls[-1]
+        if skipped:
+            assert calls[:-1] == ["dw"]
+            assert (payload.tx_submitter, payload.tx_hash, payload.mocking_mode) == (
+                None,
+                None,
+                False,
+            )
+        else:
+            assert calls[:-1] == ["dw", "safe"]
 
     def test_set_approval_success(self) -> None:
         """_set_approval should handle successful response."""
@@ -325,7 +379,7 @@ class TestPolymarketSetApprovalBehaviour:
         ctx.logger.error.assert_called()
 
     def test_prepare_approval_tx_success(self) -> None:
-        """_prepare_approval_tx should build 8 batches and return tx_hex on success."""
+        """_prepare_approval_tx should build 9 batches and return tx_hex on success."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
@@ -353,6 +407,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -368,13 +424,40 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # 8 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
+        # 9 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
         # CTF Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the
-        # same, plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
-        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
-        # receive no pUSD allowance — their redeem path doesn't pull
-        # ERC-20 from the Safe.
-        assert len(behaviour.multisend_batches) == 8
+        # same, 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter, plus the PositionManager
+        # setApprovalForAll for the Router. The collateral adapters
+        # intentionally receive no pUSD allowance - their redeem path doesn't
+        # pull ERC-20 from the Safe.
+        assert len(behaviour.multisend_batches) == 9
+
+    def test_safe_approves_router_for_v2_positions(self) -> None:
+        """The Safe multisend ends with PositionManager setApprovalForAll(Router, true)."""
+        behaviour = _make_behaviour()
+        names = (
+            "collateral ctf ctf_exchange neg_risk_ctf_exchange neg_risk_adapter "
+            "ctf_collateral_adapter neg_risk_ctf_collateral_adapter "
+            "position_manager router"
+        ).split()
+        for index, name in enumerate(names, start=1):
+            setattr(behaviour.params, f"polymarket_{name}_address", f"0x{index:040x}")
+        behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+        with patch.object(type(behaviour), "tx_hex", new_callable=PropertyMock):
+            gen = behaviour._prepare_approval_tx()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
+        last = behaviour.multisend_batches[-1]
+        assert (last.to, bytes(last.data).hex(), last.value) == (
+            f"0x{8:040x}",
+            "a22cb465" + f"{9:064x}" + f"{1:064x}",
+            0,
+        )
 
     def test_prepare_approval_tx_includes_ctf_collateral_adapter_approval(self) -> None:
         """The redeem-critical CTF setApprovalForAll(CtfCollateralAdapter, true) must be in the batch."""
@@ -407,6 +490,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -480,6 +565,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -529,6 +616,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()
@@ -570,6 +659,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()

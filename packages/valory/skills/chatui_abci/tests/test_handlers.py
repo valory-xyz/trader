@@ -106,6 +106,9 @@ class _TestableHttpHandler(HttpHandler):
     _store_chatui_param_to_json: Any = None  # type: ignore[assignment]
     _send_ok_response: Any = None  # type: ignore[assignment]
     _send_http_response: Any = None  # type: ignore[assignment]
+    # Built with ``object.__new__``, so ``__init__`` never sets it; these
+    # tests send no chat requests.
+    _chat_turns: Dict[Any, Any] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +136,16 @@ def _make_handler(
 
     `valid_mechs` defaults to the discovered `available_mechs`; approved mechs
     without a rate given are taken as accepted at `NATIVE_RATE`.
+
+    :param available_tools: the mech tools the round reports as available.
+    :param current_config: the chat UI config already in place.
+    :param available_mechs: the mechs the round reports as visible.
+    :param prediction_tools: the prediction tools discovered so far.
+    :param approved_mechs: mechs approved at `NATIVE_RATE`.
+    :param valid_mechs: the mechs the params accept; defaults to `available_mechs`.
+    :param approved_rates: approved mechs mapped to their accepted rate.
+    :param delivery_rate_caps: the delivery rate cap of each payment type.
+    :return: the wired handler.
     """
     handler = object.__new__(_TestableHttpHandler)
 
@@ -2431,6 +2444,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
 
         Valid JSON shaped differently reads no better than prose, and the
         model is free to produce it, so it has to be answered the same way.
+
+        :param reply: the parsed JSON the model replies with.
         """
         handler = self._handler()
         payload = json.dumps({"response": json.dumps(reply)})
@@ -2460,6 +2475,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         tolerated and reported back as unrecognised, which is the wanted
         behaviour; it is the raising ones that needed a guard, and
         enumerating them would not be complete.
+
+        :param config: the config update whose list holds unhashable items.
         """
         handler = self._handler()
         payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
@@ -2486,6 +2503,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         an infinity cannot be made an integer, so each raises somewhere inside
         the update. Naming the fields one by one would not keep up with the
         config growing, which is why the update is wrapped as a whole.
+
+        :param config: the config update carrying the wrongly typed field.
         """
         handler = self._handler()
         payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
@@ -2512,6 +2531,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         Deep nesting raises RecursionError, which derives from neither
         ValueError nor TypeError, and an oversized integer literal raises a
         plain ValueError. A crafted reply would otherwise still end the agent.
+
+        :param payload: the raw reply text that breaks the JSON parser.
         """
         handler = self._handler()
 
@@ -2539,6 +2560,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
 
         A NaN passes a range comparison without being an amount at all, and
         ``behavior`` was accepted whatever its type.
+
+        :param config: the config update carrying the invalid value.
         """
         handler = self._handler()
         payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})

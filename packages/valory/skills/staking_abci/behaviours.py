@@ -86,6 +86,53 @@ READ_MODE = "r"
 WRITE_MODE = "w"
 
 
+def is_rebaseline_pending(
+    next_ts: int, ts_checkpoint: int, liveness_period: int
+) -> bool:
+    """Whether the staking contract signals a pending rebaseline.
+
+    StakingToken v0.4 makes ``getNextRewardCheckpointTimestamp()`` return
+    ``block.timestamp`` while a rebaseline is pending, so it then differs from
+    ``tsCheckpoint + livenessPeriod``. On older contracts the two are always equal.
+
+    :param next_ts: the staking contract's next reward checkpoint timestamp.
+    :param ts_checkpoint: the staking contract's last checkpoint timestamp.
+    :param liveness_period: the staking contract's liveness period.
+    :return: whether a rebaseline is pending.
+    """
+    return next_ts != ts_checkpoint + liveness_period
+
+
+def is_checkpoint_due(
+    next_ts: int, ts_checkpoint: int, liveness_period: int, synced_ts: int
+) -> bool:
+    """Whether a checkpoint is due: a rebaseline is pending or the next checkpoint is reached.
+
+    :param next_ts: the staking contract's next reward checkpoint timestamp.
+    :param ts_checkpoint: the staking contract's last checkpoint timestamp.
+    :param liveness_period: the staking contract's liveness period.
+    :param synced_ts: the timestamp synchronized across the agents.
+    :return: whether a checkpoint is due.
+    """
+    return (
+        is_rebaseline_pending(next_ts, ts_checkpoint, liveness_period)
+        or next_ts <= synced_ts
+    )
+
+
+def should_send_checkpoint(
+    due: bool, rebaseline_signal: bool, available_rewards: int
+) -> bool:
+    """Whether to send a due checkpoint, skipping it when it would change nothing.
+
+    :param due: whether a checkpoint is due (see ``is_checkpoint_due``).
+    :param rebaseline_signal: whether a rebaseline is pending (see ``is_rebaseline_pending``).
+    :param available_rewards: the staking contract's available rewards.
+    :return: whether to send the checkpoint transaction.
+    """
+    return due and (available_rewards > 0 or rebaseline_signal)
+
+
 class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     """Base behaviour that contains methods to interact with the staking contract."""
 
@@ -94,6 +141,7 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         super().__init__(**kwargs)
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
+        self._available_rewards = 0
         self._agent_ids: str = "[]"
         # Per-instance scratch for the in-flight regime-detection reads only.
         # The *verdict* is cached on shared state (see ``_is_new_staking_regime``),
@@ -156,11 +204,6 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._next_checkpoint = next_checkpoint
 
     @property
-    def is_checkpoint_reached(self) -> bool:
-        """Whether the next checkpoint is reached."""
-        return self.next_checkpoint <= self.synced_timestamp
-
-    @property
     def ts_checkpoint(self) -> int:
         """Get the last checkpoint timestamp."""
         return self._checkpoint_ts
@@ -179,6 +222,16 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def liveness_period(self, liveness_period: int) -> None:
         """Set the liveness period."""
         self._liveness_period = liveness_period
+
+    @property
+    def available_rewards(self) -> int:
+        """Get the staking contract's available rewards."""
+        return self._available_rewards
+
+    @available_rewards.setter
+    def available_rewards(self, available_rewards: int) -> None:
+        """Set the staking contract's available rewards."""
+        self._available_rewards = available_rewards
 
     @property
     def liveness_ratio(self) -> int:
@@ -387,6 +440,14 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         status = yield from self._staking_contract_interact(
             contract_callable="get_liveness_period",
             placeholder=get_name(CallCheckpointBehaviour.liveness_period),
+        )
+        return status
+
+    def _get_available_rewards(self) -> WaitableConditionType:
+        """Get the staking contract's available rewards."""
+        status = yield from self._staking_contract_interact(
+            contract_callable="available_rewards",
+            placeholder=get_name(CallCheckpointBehaviour.available_rewards),
         )
         return status
 
@@ -690,6 +751,43 @@ class CallCheckpointBehaviour(
             self.checkpoint_data,
         )
 
+    def _should_call_checkpoint(self) -> Generator[None, None, bool]:
+        """Whether the checkpoint is due and would change the contract's state."""
+        yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
+        yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
+        yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
+        rebaseline_signal = is_rebaseline_pending(
+            self.next_checkpoint, self.ts_checkpoint, self.liveness_period
+        )
+        if rebaseline_signal:
+            # tsCheckpoint was read before next_checkpoint, so a checkpoint by
+            # another party in between looks like a rebaseline. Re-read it.
+            yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
+            rebaseline_signal = is_rebaseline_pending(
+                self.next_checkpoint, self.ts_checkpoint, self.liveness_period
+            )
+
+        due = is_checkpoint_due(
+            self.next_checkpoint,
+            self.ts_checkpoint,
+            self.liveness_period,
+            self.synced_timestamp,
+        )
+        # availableRewards only matters when the checkpoint is due by time
+        # alone, so it is read only then; otherwise 0 does not change the rule.
+        available_rewards = 0
+        if due and not rebaseline_signal:
+            yield from self.wait_for_condition_with_sleep(self._get_available_rewards)
+            available_rewards = self.available_rewards
+
+        should_send = should_send_checkpoint(due, rebaseline_signal, available_rewards)
+        if due and not should_send:
+            self.context.logger.info(
+                "Skipping the checkpoint: the staking contract has no available "
+                "rewards and no rebaseline is pending."
+            )
+        return should_send
+
     def check_new_epoch(self) -> Generator[None, None, bool]:
         """Check if a new epoch has been reached."""
         yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
@@ -725,8 +823,8 @@ class CallCheckpointBehaviour(
 
             checkpoint_tx_hex = None
             if self.service_staking_state == StakingState.STAKED:
-                yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-                if self.is_checkpoint_reached:
+                should_call_checkpoint = yield from self._should_call_checkpoint()
+                if should_call_checkpoint:
                     checkpoint_tx_hex = yield from self._prepare_safe_tx()
 
             if self.service_staking_state == StakingState.EVICTED:

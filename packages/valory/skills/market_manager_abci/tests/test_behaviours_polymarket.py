@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     YIELD_EVERY_N_MARKETS,
 )
@@ -124,6 +126,7 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
         outcomes=json.dumps(["Yes", "No"]),
         outcomePrices=json.dumps(["0.6", "0.4"]),
         clobTokenIds=json.dumps(["token1", "token2"]),
+        version="v1",
         endDate="2030-01-01T00:00:00Z",
         liquidity="1000.0",
         closed=False,
@@ -132,6 +135,14 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
     )
     defaults.update(overrides)
     return defaults
+
+
+# The GAMMA_V1/GAMMA_V2 markets of polymarket_client's test_connection.py,
+# trimmed to the fields the behaviour reads.
+GAMMA_V1, GAMMA_V2 = json.loads(r"""[
+{"id": "559651", "question": "Xi Jinping out before 2027?", "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.0265\", \"0.9735\"]", "endDate": "2027-01-01T04:59:00Z", "version": "v1", "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]", "positionIds": ["895257453734540292493143124621755605615887197499956109032745153687078305792", "895257453734540292493143124621755605615887197499956109032745153687078305793"]},
+{"id": "6015109", "question": "Will Central Park record at least 0.01 inches of precipitation on October 22, 2026?", "conditionId": "0x01930457ddf921a30b0d8aabfa2ef601f0000000000000000000000000000000", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.525\", \"0.475\"]", "endDate": "2026-10-23T16:00:00Z", "version": "v2", "positionIds": ["712069342982939259021323770019514721134145408933508924027915981665668694016", "712069342982939259021323770019514721134145408933508924027915981665668694017"]}
+]""")
 
 
 # ===========================================================================
@@ -1088,6 +1099,42 @@ class TestProcessChunk:
             for call in log_calls
         )
 
+    def test_market_first_seen_empty_is_queued_once_it_has_liquidity(self) -> None:
+        """A market that lists empty is queued by the refresh that shows liquidity."""
+        behaviour = _make_behaviour(bets=[])
+        behaviour._current_market = "polymarket_client"
+        behaviour.context.params.use_multi_bets_mode = False
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        behaviour._bet_freshness_check_and_update()
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=5000.0)]))
+        behaviour._bet_freshness_check_and_update()
+        assert behaviour.bets[0].queue_status == QueueStatus.TO_PROCESS
+
+    def test_market_past_its_margin_is_blacklisted_again_after_liquidity(self) -> None:
+        """Liquidity does not bring back a market past its opening margin for good."""
+        behaviour = _make_behaviour(bets=[])
+        behaviour._current_market = "polymarket_client"
+        behaviour.context.params.opening_margin = 100
+        type(behaviour).synced_time = PropertyMock(return_value=5000000000)  # type: ignore[method-assign]
+        ended = dict(openingTimestamp=1000)
+
+        list(
+            behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0, **ended)])
+        )
+        list(
+            behaviour._process_chunk(
+                [raw_bet("b1", scaledLiquidityMeasure=5000.0, **ended)]
+            )
+        )
+        behaviour._blacklist_expired_bets()
+
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+        assert behaviour.bets[0].processed_timestamp == sys.maxsize
+
 
 # ===========================================================================
 # Tests for _validate_trade
@@ -1440,6 +1487,24 @@ class TestReplaceWithExistingInvestmentsIfEmpty:
         behaviour._replace_with_existing_investments_if_empty(bet, existing)
         assert bet.investments == existing
 
+    def test_warns_only_when_keeping_a_recorded_investment(self) -> None:
+        """Test that only a kept non-empty investment record is warned about."""
+        behaviour = _make_behaviour()
+        never_invested = _make_bet(id="never")
+        never_invested.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            never_invested, {"Yes": [], "No": []}
+        )
+        behaviour.context.logger.warning.assert_not_called()
+
+        held = _make_bet(id="held")
+        held.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            held, {"Yes": [100], "No": []}
+        )
+        behaviour.context.logger.warning.assert_called_once()
+        assert "held" in behaviour.context.logger.warning.call_args[0][0]
+
     def test_does_not_replace_when_has_yes(self) -> None:
         """Test no replacement when bet has yes investments."""
         behaviour = _make_behaviour()
@@ -1622,6 +1687,24 @@ class TestUpdateAllBetsInvestments:
         # bet2 should have been updated
         assert len(bet2.investments["Yes"]) == 1
 
+    def test_logs_one_summary_line(self) -> None:
+        """Test that a refresh logs one summary line and no per-bet warnings."""
+        behaviour = _make_behaviour()
+        held = _make_bet(id="held")
+        held.condition_id = "0xheld"
+        untraded = _make_bet(id="untraded")
+        untraded.condition_id = "0xuntraded"
+        behaviour.bets = [held, untraded]
+
+        behaviour._update_all_bets_investments(
+            {"0xheld": {0: [{"side": "BUY", "usdc_amount": 10.0}]}}
+        )
+
+        behaviour.context.logger.warning.assert_not_called()
+        behaviour.context.logger.info.assert_any_call(
+            "Refreshed the investments of 2 bets, 1 of them with recorded investments."
+        )
+
     def test_empty_bets_list(self) -> None:
         """Test with empty bets list."""
         behaviour = _make_behaviour()
@@ -1767,6 +1850,34 @@ class TestFetchMarketsFromPolymarket:
         # one yield from the connection request, one from the parse loop boundary
         assert yields >= 1
 
+    def test_market_version_selects_trading_ids(self) -> None:
+        """Outcome tokens are a v2 market's positionIds in order and a v1 market's clobTokenIds, and each bet records its version; other versions make no bet."""
+        behaviour = self._setup_behaviour()
+        # The helper adds liquidity: open Gamma rows (V1 and V2) omit it while
+        # the order book is empty and carry it once orders rest.
+        v2 = _make_valid_market(**GAMMA_V2)  # the default clobTokenIds must be ignored
+        markets = [
+            _make_valid_market(**GAMMA_V1),
+            {**v2, "clobTokenIds": None},  # read by its positionIds alone
+            {**v2, "id": "v2-no-position-ids", "positionIds": None},
+            *(
+                {**v2, "id": f"version-{v}", "version": v}
+                for v in (None, "V2", "v2\n", "v3")
+            ),
+        ]
+        behaviour.send_polymarket_connection_request = _return_gen(  # type: ignore[method-assign]
+            {"weather": markets}
+        )
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+
+        assert {bet["id"]: bet["outcome_token_ids"] for bet in result} == {
+            "559651": dict(zip(["Yes", "No"], json.loads(GAMMA_V1["clobTokenIds"]))),
+            "6015109": dict(zip(["Yes", "No"], GAMMA_V2["positionIds"])),
+        }
+        assert [bet.get("market_version") for bet in result] == ["v1", "v2"]
+
     def test_market_missing_outcomes(self) -> None:
         """Test market with empty outcomes is skipped."""
         behaviour = self._setup_behaviour()
@@ -1901,13 +2012,22 @@ class TestFetchMarketsFromPolymarket:
         response = {"technology": [valid, invalid]}
         behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
-        with patch.object(behaviour.context.logger, "warning") as mock_warning:
+        with (
+            patch.object(behaviour.context.logger, "info") as mock_info,
+            patch.object(behaviour.context.logger, "warning") as mock_warning,
+        ):
             gen = behaviour._fetch_markets_from_polymarket()
             result = _exhaust_gen(gen)  # type: ignore[arg-type]
 
-        disabled_calls = [
+        # a configuration choice, so it is logged at INFO, not WARNING
+        assert not [
             c
             for c in mock_warning.call_args_list
+            if "Keyword category filter DISABLED" in str(c)
+        ]
+        disabled_calls = [
+            c
+            for c in mock_info.call_args_list
             if "Keyword category filter DISABLED" in str(c)
         ]
         assert len(disabled_calls) == 1
@@ -2034,6 +2154,18 @@ class TestFetchMarketsFromPolymarket:
         bet_dict = result[0]
         assert bet_dict["market_spread"] == 0.04
 
+    def test_valid_market_reads_best_bid_and_ask(self) -> None:
+        """Gamma's best bid and ask are stored; a value outside [0, 1] or not a number is None."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(bestBid="0.41", bestAsk="1.5")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        result = _exhaust_gen(behaviour._fetch_markets_from_polymarket())  # type: ignore[arg-type]
+
+        assert result is not None
+        assert (result[0]["best_bid"], result[0]["best_ask"]) == (0.41, None)
+
     def test_valid_market_reads_description(self) -> None:
         """Test that description from the Gamma API response is included in bet_dict."""
         behaviour = self._setup_behaviour()
@@ -2052,6 +2184,19 @@ class TestFetchMarketsFromPolymarket:
         assert (
             bet_dict["description"] == "This market resolves YES if the event occurs."
         )
+
+    def test_valid_market_reads_slug(self) -> None:
+        """Test that the Gamma slug is kept, so the market's page can be linked."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(slug="will-tesla-stock-go-up")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert result[0]["slug"] == "will-tesla-stock-go-up"  # type: ignore[index]
 
     def test_valid_market_missing_description_is_none(self) -> None:
         """Test that a market without a description yields description=None in bet_dict."""
@@ -2228,6 +2373,154 @@ class TestUpdateBets:
         assert len(behaviour.bets) == 1
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
 
+    @staticmethod
+    def _run_update(
+        stored: List[Bet], fetched: List[Dict[str, Any]], response: Any
+    ) -> PolymarketFetchMarketBehaviour:
+        """Run _update_bets over ``stored`` with a refresh returning ``fetched``."""
+        behaviour = _make_behaviour()
+        behaviour._current_market = "polymarket"
+        behaviour.bets = stored
+        behaviour._fetch_markets_from_polymarket = _return_gen(fetched)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(response)()
+        )
+        behaviour.context.params.opening_margin = 1000
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+        _exhaust_gen(behaviour._update_bets())
+        return behaviour
+
+    def test_closed_unfetched_bet_is_blacklisted(self) -> None:
+        """A stored bet the refresh no longer returns leaves the pickable set once closed."""
+        stale = _make_bet(id="stale")
+        fetched = [raw_bet("fresh")]
+        behaviour = self._run_update([stale], fetched, {"closed_ids": ["stale"]})
+
+        behaviour.send_polymarket_connection_request.assert_called_once_with(  # type: ignore[attr-defined]
+            {
+                "request_type": "check_closed_markets",
+                "params": {"market_ids": ["stale"]},
+            }
+        )
+        assert stale.queue_status == QueueStatus.EXPIRED
+        assert [b.id for b in behaviour.bets] == ["stale", "fresh"]
+
+    def test_empty_refresh_sends_no_check(self) -> None:
+        """A refresh that returned no market leaves every stored bet unchecked."""
+        stale = _make_bet(id="stale")
+        behaviour = self._run_update([stale], [], {"closed_ids": ["stale"]})
+
+        behaviour.send_polymarket_connection_request.assert_not_called()  # type: ignore[attr-defined]
+        assert stale.queue_status == QueueStatus.FRESH
+
+
+class TestBlacklistClosedUnfetchedBets:
+    """Tests for _blacklist_closed_unfetched_bets."""
+
+    @staticmethod
+    def _check(
+        stored: List[Bet], fetched_ids: List[str], response: Any
+    ) -> PolymarketFetchMarketBehaviour:
+        """Run the check over ``stored`` after a refresh that returned ``fetched_ids``."""
+        behaviour = _make_behaviour(bets=stored)
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(response)()
+        )
+        fetched = [{"id": market_id} for market_id in fetched_ids]
+        _exhaust_gen(behaviour._blacklist_closed_unfetched_bets(fetched))
+        return behaviour
+
+    @staticmethod
+    def _sent_ids(behaviour: PolymarketFetchMarketBehaviour) -> List[str]:
+        """Return the market ids sent to the closed check."""
+        payload = behaviour.send_polymarket_connection_request.call_args[0][0]  # type: ignore[attr-defined]
+        assert payload["request_type"] == "check_closed_markets"
+        return payload["params"]["market_ids"]
+
+    def test_only_closed_ids_are_blacklisted(self) -> None:
+        """Closed bets are blacklisted; open and unchecked ones stay as they are."""
+        closed = _make_bet(id="closed")
+        still_open = _make_bet(id="open")
+        unchecked = _make_bet(id="unchecked")
+        behaviour = self._check(
+            [closed, still_open, unchecked],
+            [],
+            {"closed_ids": ["closed"], "unchecked_ids": ["unchecked"]},
+        )
+
+        assert closed.queue_status == QueueStatus.EXPIRED
+        assert closed.processed_timestamp == sys.maxsize
+        for bet in (still_open, unchecked):
+            assert bet.queue_status == QueueStatus.FRESH
+            assert bet.processed_timestamp == 0
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=3 dropped=1 unchecked=1"
+        )
+
+    def test_sends_only_unfetched_live_bets(self) -> None:
+        """Fetched and already blacklisted bets are not sent; invested ones are."""
+        fetched = _make_bet(id="fetched")
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        invested = _make_bet(id="invested", investments={"Yes": [10], "No": []})
+        unfetched = _make_bet(id="unfetched")
+        behaviour = self._check(
+            [fetched, expired, invested, unfetched],
+            ["fetched"],
+            {"closed_ids": [], "unchecked_ids": []},
+        )
+
+        assert self._sent_ids(behaviour) == ["invested", "unfetched"]
+
+    def test_closed_bet_with_a_position_is_blacklisted(self) -> None:
+        """A closed market is dropped from picking even when the agent holds it."""
+        invested = _make_bet(id="invested", investments={"Yes": [10], "No": []})
+        self._check([invested], [], {"closed_ids": ["invested"]})
+
+        assert invested.queue_status == QueueStatus.EXPIRED
+        assert invested.investments == {"Yes": [10], "No": []}
+
+    def test_nothing_to_check_sends_nothing(self) -> None:
+        """No request is made when every stored bet was fetched or is blacklisted."""
+        fetched = _make_bet(id="fetched")
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        behaviour = self._check([fetched, expired], ["fetched"], None)
+
+        behaviour.send_polymarket_connection_request.assert_not_called()  # type: ignore[attr-defined]
+        behaviour.context.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "response", [None, {"error": "Closed check of 2 markets got no answer"}]
+    )
+    def test_failed_check_blacklists_nothing(self, response: Any) -> None:
+        """With no answer, every sent bet stays pickable until the next refresh."""
+        bets = [_make_bet(id="a"), _make_bet(id="b")]
+        behaviour = self._check(bets, [], response)
+
+        assert [b.queue_status for b in bets] == [QueueStatus.FRESH] * 2
+        behaviour.context.logger.warning.assert_called_once()
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=2 dropped=0 unchecked=2"
+        )
+
+    def test_unknown_or_repeated_closed_ids_are_ignored(self) -> None:
+        """An id that was not sent, or a repeat, blacklists nothing more."""
+        sent = _make_bet(id="sent")
+        fetched = _make_bet(id="fetched")
+        behaviour = self._check(
+            [sent, fetched], ["fetched"], {"closed_ids": ["fetched", "sent", "sent"]}
+        )
+
+        assert sent.queue_status == QueueStatus.EXPIRED
+        assert fetched.queue_status == QueueStatus.FRESH
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=1 dropped=1 unchecked=0"
+        )
+
 
 # ===========================================================================
 # Tests for poly_tags flowing from market dict to Bet object
@@ -2253,6 +2546,7 @@ class TestPolyTagsFlowThrough:
         behaviour = self._setup_behaviour()
         market = _make_valid_market()
         market["_poly_tags"] = ["politics", "elections"]
+        market["_poly_event_id"] = "903"
         response = {"technology": [market]}
         behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
@@ -2261,6 +2555,7 @@ class TestPolyTagsFlowThrough:
         assert result is not None
         assert len(result) == 1
         assert result[0]["poly_tags"] == ["politics", "elections"]
+        assert result[0]["poly_event_id"] == "903"
 
 
 # ===========================================================================

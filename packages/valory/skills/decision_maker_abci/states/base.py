@@ -50,6 +50,9 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
 
+# The mech tool that ranks the candidate markets by researchability.
+RANKING_TOOL = "market-researchability-ranking"
+
 
 class Event(Enum):
     """Event enumeration for the price estimation demo."""
@@ -86,6 +89,7 @@ class Event(Enum):
     SET_APPROVAL = "set_approval"
     PREPARE_TX = "prepare_tx"
     WITHDRAWAL_DONE = "withdrawal_done"
+    AGENT_TOPUP_FAILED = "agent_topup_failed"
 
 
 class SynchronizedData(
@@ -140,6 +144,14 @@ class SynchronizedData(
     def mech_tool(self) -> str:
         """Get the selected mech tool."""
         return str(self.db.get_strict("mech_tool"))
+
+    @property
+    def is_ranking_period(self) -> bool:
+        """Get whether this period's mech request ranks the candidate markets."""
+        return (
+            self.db.get("mech_tool", None) == RANKING_TOOL
+            and self.db.get("sampled_bet_index", None) is None
+        )
 
     @property
     def selected_tool_key(self) -> Optional[str]:
@@ -359,6 +371,17 @@ class SynchronizedData(
     def is_activity_target_met(self) -> bool:
         """Get whether the off-chain activity target is met (the rotation signal)."""
         return bool(self.db.get("is_activity_target_met", False))
+
+    @property
+    def epoch_start(self) -> Optional[int]:
+        """Get the staking epoch's checkpoint read this period, ``None`` when unstaked."""
+        epoch_start = self.db.get("epoch_start", None)
+        return None if epoch_start is None else int(epoch_start)
+
+    @property
+    def found_nothing_to_redeem(self) -> bool:
+        """Get whether this period's redeem round found no position to redeem."""
+        return bool(self.db.get("found_nothing_to_redeem", False))
 
     @property
     def previous_checkpoint(self) -> Optional[int]:

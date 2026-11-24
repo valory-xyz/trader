@@ -55,6 +55,20 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
+from packages.valory.skills.agent_topup_abci.utils import (
+    GNOSIS_CHAIN_NAME,
+    POLYGON_CHAIN_NAME,
+    TOPUP_REFILLING_KEY,
+    TOPUP_SUCCEEDED_KEY,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    WXDAI_ADDRESS as GNOSIS_WRAPPED_NATIVE_ADDRESS,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    get_agent_topups,
+    get_native_deficits_with_signer_shortfall,
+    get_signer_native_need,
+)
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     MECH_PRE_DEPOSIT_EOA_SHORT,
@@ -71,7 +85,10 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
-from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
     FundRequirements,
@@ -99,16 +116,13 @@ OMENSTRAT_UI_SUBDIR = "omenstrat"
 POLYSTRAT_UI_SUBDIR = "polystrat"
 
 # Gnosis Chain Configuration
-GNOSIS_CHAIN_NAME = "gnosis"
 GNOSIS_CHAIN_ID = 100
 GNOSIS_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
 )
-GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GNOSIS_USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 
 # Polygon Chain Configuration
-POLYGON_CHAIN_NAME = "polygon"
 POLYGON_CHAIN_ID = 137
 POLYGON_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
@@ -736,16 +750,87 @@ class HttpHandler(BaseHttpHandler):
             if self.params.use_x402:
                 self._submit_x402_swap_if_idle()
 
+            funds_status = self._get_adjusted_funds_status()
+            self._apply_agent_topup(funds_status)
             self._send_ok_response(
-                http_msg,
-                http_dialogue,
-                self._get_adjusted_funds_status().get_response_body(),
+                http_msg, http_dialogue, funds_status.get_response_body()
             )
         except Exception as e:
             self.context.logger.error(f"Error handling funds status request: {e}")
             self._send_internal_server_error_response(
                 http_msg, http_dialogue, {"error": "Failed to fetch funds status"}
             )
+
+    def _apply_agent_topup(self, funds_status: FundRequirements) -> None:
+        """Report the native deficits of funds-manager `get_agent_topup`, unless the last top-up failed.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        """
+        agent_address = self.context.agent_address
+        refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
+            if refilling:
+                self._report_signer_refill_need(funds_status, agent_address)
+            return
+        try:
+            topups = get_agent_topups(
+                self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+                funds_status,
+                agent_address,
+                self.params.agent_balance_threshold,
+                self.context.logger,
+                refilling=refilling,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Keeping the deficits read: {type(exc).__name__}({exc}).",
+                exc_info=True,
+            )
+            return
+        for chain_name, topup in topups.items():
+            signer_deficit = topup.signer_deficit
+            safe_deficit = topup.safe_deficit
+            if self.params.is_running_on_polymarket:
+                # The adjusted Agent Safe deficit counts its USDC as POL.
+                (
+                    signer_deficit,
+                    safe_deficit,
+                ) = get_native_deficits_with_signer_shortfall(
+                    funds_status,
+                    chain_name,
+                    agent_address,
+                    topup,
+                    refilling,
+                    self.context.logger,
+                )
+            for address, account in funds_status[chain_name].accounts.items():
+                if address == agent_address:
+                    deficit = signer_deficit
+                else:
+                    deficit = safe_deficit
+                if deficit is None:
+                    continue
+                for token in account.tokens.values():
+                    if token.is_native:
+                        token.deficit = deficit
+
+    @staticmethod
+    def _report_signer_refill_need(
+        funds_status: FundRequirements, agent_address: str
+    ) -> None:
+        """Report the Agent Signer need up to its target on the Agent Signer, crediting no transfer.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        :param agent_address: the Agent Signer address.
+        """
+        for chain_name in funds_status:
+            need = get_signer_native_need(funds_status, chain_name, agent_address, True)
+            account = funds_status[chain_name].accounts.get(agent_address)
+            if need is None or account is None:
+                continue
+            for token in account.tokens.values():
+                if token.is_native:
+                    token.deficit = need
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""
@@ -1332,8 +1417,9 @@ class HttpHandler(BaseHttpHandler):
         # balance rather than the last path that happened to read it.
         self.context.shared_state[MECH_PRE_DEPOSIT_EOA_SHORT] = False
         w3 = self._get_web3_instance(chain)
-        if w3 is not None:
-            self._eoa_spendable_native(w3, eoa_account.address)
+        spendable = (
+            None if w3 is None else self._eoa_spendable_native(w3, eoa_account.address)
+        )
         tracker = self._resolve_balance_tracker(chain, payment_type)
         if tracker is None:
             return False
@@ -1357,6 +1443,22 @@ class HttpHandler(BaseHttpHandler):
             return True
 
         token = self._tracker_token(chain, tracker)
+        out_of_native = spendable == 0
+        if out_of_native and token is not None:
+            held = self._check_usdc_balance(eoa_account.address, chain, token)
+            out_of_native = held is not None and held < amount
+        if out_of_native:
+            self.context.logger.warning(
+                f"Mech pre-deposit {deposited} is below the floor {floor}; "
+                "not depositing: the EOA is out of native"
+                + (
+                    ""
+                    if token is None
+                    else " and holds less of the token than the deposit needs"
+                )
+                + "."
+            )
+            return False
         self.context.logger.info(
             f"Mech pre-deposit {deposited} is below the floor {floor}; "
             f"depositing {amount} into {tracker}."

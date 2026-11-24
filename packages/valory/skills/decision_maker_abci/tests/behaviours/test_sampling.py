@@ -21,23 +21,35 @@
 
 import json
 import time
+from contextlib import ExitStack
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    BOOK_CHECK_CANDIDATES,
     SamplingBehaviour,
     UNIX_DAY,
     UNIX_WEEK,
     WEEKDAYS,
 )
+from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
+
+NOW = 1700000000
+COOLDOWN = 3600
+LATEST_DECLINE_TS = 1700000000
+EARLIER_DECLINE_TS = 1690000000
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -92,6 +104,7 @@ def _make_mock_bet(  # type: ignore[no-untyped-def]
     outcome_prices=None,
     neg_risk=False,
     poly_tags=None,
+    declined_epoch_start=0,
 ):
     """Create a mock Bet object."""
     if opening_timestamp is None:
@@ -112,6 +125,12 @@ def _make_mock_bet(  # type: ignore[no-untyped-def]
     bet.outcomeTokenMarginalPrices = outcome_prices
     bet.neg_risk = neg_risk
     bet.poly_tags = poly_tags
+    bet.ranked_at = 0
+    bet.research_score = None
+    bet.declined_epoch_start = declined_epoch_start
+    bet.is_declined_in_epoch.side_effect = lambda epoch_start: Bet.is_declined_in_epoch(
+        bet, epoch_start
+    )
     bet.blacklist_forever = MagicMock()
     return bet
 
@@ -575,6 +594,587 @@ class TestClassifyProcessableBet:
         )
 
 
+class TestDeclinedMarketCooldown:
+    """Tests for the cooldown on markets declined without a position."""
+
+    @staticmethod
+    def _params(**overrides: Any) -> MagicMock:
+        """Return params with wide sampling ranges and a 1 h cooldown."""
+        values: Dict[str, Any] = dict(
+            sample_bets_closing_days=60,
+            opening_margin=100,
+            safe_voting_range=100,
+            declined_market_cooldown=COOLDOWN,
+        )
+        values.update(overrides)
+        return MagicMock(**values)
+
+    @pytest.mark.parametrize(
+        "benchmarking, invested, declined_ago, cooldown, expected",
+        (
+            (False, 0, 60, COOLDOWN, True),
+            (False, 0, COOLDOWN - 1, COOLDOWN, True),
+            (False, 0, COOLDOWN, COOLDOWN, False),
+            (False, 0, None, COOLDOWN, False),
+            (False, 5, 60, COOLDOWN, False),
+            (False, 0, 60, 0, False),
+            (True, 0, 60, COOLDOWN, False),
+            (False, 0, -60, COOLDOWN, False),
+        ),
+        ids=(
+            "declined-a-minute-ago",
+            "declined-just-inside",
+            "cooldown-elapsed",
+            "never-processed",
+            "has-position",
+            "cooldown-off",
+            "benchmarking",
+            "stamped-in-the-future",
+        ),
+    )
+    def test_declined_recently(
+        self,
+        benchmarking: bool,
+        invested: int,
+        declined_ago: Optional[int],
+        cooldown: int,
+        expected: bool,
+    ) -> None:
+        """Only a no-position market processed less than the cooldown ago is cooling."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+        bet = _make_mock_bet(
+            invested_amount=invested,
+            processed_timestamp=0 if declined_ago is None else NOW - declined_ago,
+        )
+        with patch.object(
+            type(behaviour),
+            "params",
+            new_callable=PropertyMock,
+            return_value=self._params(declined_market_cooldown=cooldown),
+        ):
+            assert behaviour._declined_recently(bet, NOW) is expected
+
+    def test_cooling_bet_is_not_processable_and_classified(self) -> None:
+        """A cooling bet is dropped by processable_bet and reported as cooling."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        bet = _make_mock_bet(
+            queue_status=QueueStatus.REPROCESSED,
+            opening_timestamp=NOW + 86400 * 5,
+            processed_timestamp=NOW - 60,
+        )
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(behaviour), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            assert behaviour.processable_bet(bet, now=NOW) is False
+            assert (
+                behaviour._classify_processable_bet(bet, NOW, multi_bets_active=False)
+                == "cooling"
+            )
+            assert behaviour.processable_bet(bet, now=NOW + COOLDOWN) is True
+
+    def test_market_back_from_no_liquidity(self) -> None:
+        """An empty market turns processable with liquidity, until it nears its close."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        closes_at = NOW + 86400 * 5
+        market: Dict[str, Any] = dict(
+            id="b1",
+            market="polymarket_client",
+            title="Q?",
+            collateralToken="",
+            creator="0x",
+            fee=0,
+            openingTimestamp=closes_at,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[0, 0],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=0,
+        )
+        bet = Bet(**market)
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour),
+                "kpi_is_met",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+            patch.object(
+                type(behaviour),
+                "review_bets_for_selling",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            assert behaviour.processable_bet(bet, now=NOW) is False
+
+            bet.update_market_info(Bet(**{**market, "scaledLiquidityMeasure": 5000.0}))
+            bet.queue_status = bet.queue_status.move_to_process()
+            assert behaviour.processable_bet(bet, now=NOW) is True
+
+            assert behaviour.processable_bet(bet, now=closes_at) is False
+            assert bet.queue_status == QueueStatus.EXPIRED
+
+    @pytest.mark.parametrize(
+        "queue_status, opening_offset, expected",
+        (
+            (QueueStatus.FRESH, 86400 * 5, "wrong_queue"),
+            (QueueStatus.REPROCESSED, 10, "out_of_safe"),
+        ),
+        ids=("wrong-queue-first", "out-of-safe-first"),
+    )
+    def test_cooling_has_lowest_precedence(
+        self, queue_status: QueueStatus, opening_offset: int, expected: str
+    ) -> None:
+        """A cooling bet that also trips an earlier check reports the earlier class."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        bet = _make_mock_bet(
+            queue_status=queue_status,
+            opening_timestamp=NOW + opening_offset,
+            processed_timestamp=NOW - 60,
+        )
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(behaviour), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            assert (
+                behaviour._classify_processable_bet(bet, NOW, multi_bets_active=False)
+                == expected
+            )
+
+    def test_small_pool_waits_out_the_cooldown(self) -> None:
+        """Declining all of a 3-market pool leaves nothing to sample until the cooldown ends."""
+        sampler = _make_behaviour()
+        sampler.__dict__["_context"].benchmarking_mode.enabled = False
+        bets = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=NOW + 86400 * 5,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=liquidity,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i, liquidity in enumerate((900.0, 500.0, 300.0))
+        ]
+        sampler.bets = bets
+
+        sampled: List[Optional[str]] = []
+        with (
+            patch.object(
+                type(sampler),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(sampler), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(sampler), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            for now in (NOW, NOW + 96, NOW + 192, NOW + 288, NOW + COOLDOWN):
+                available = [b for b in bets if sampler.processable_bet(b, now=now)]
+                if not available:
+                    sampled.append(None)
+                    continue
+                bet = bets[sampler._sampled_bet_idx(available)]
+                sampled.append(bet.id)
+                bet.processed_timestamp = now
+
+        assert sampled == ["m0", "m1", "m2", None, "m0"]
+
+
+EPOCH = NOW - 3_600
+NEXT_EPOCH = EPOCH + 86_400
+
+
+def _omen_market(bet_id: str, **overrides: Any) -> Bet:
+    """Return a real, open Omen market that has not been tried yet."""
+    values: Dict[str, Any] = dict(
+        id=bet_id,
+        market="omen_subgraph",
+        title=f"market {bet_id}",
+        collateralToken="0x0",
+        creator="0x0",
+        fee=0,
+        openingTimestamp=NOW + 86400 * 5,
+        outcomeSlotCount=2,
+        outcomeTokenAmounts=[10, 10],
+        outcomeTokenMarginalPrices=[0.5, 0.5],
+        outcomes=["Yes", "No"],
+        scaledLiquidityMeasure=500.0,
+        queue_status=QueueStatus.TO_PROCESS,
+    )
+    values.update(overrides)
+    return Bet(**values)
+
+
+class TestDeclinedInEpoch:
+    """Omenstrat holds a declined market back until the next staking epoch."""
+
+    @staticmethod
+    def _sampler(
+        bets: List[Bet],
+        on_polymarket: bool = False,
+        benchmarking: bool = False,
+        store_path: Optional[Path] = None,
+    ) -> SamplingBehaviour:
+        """Return a sampler over ``bets`` with wide ranges and the test cooldown."""
+        sampler = _make_behaviour()
+        sampler.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+        params = sampler.context.params
+        params.sample_bets_closing_days = 60
+        params.opening_margin = 100
+        params.safe_voting_range = 100
+        params.declined_market_cooldown = COOLDOWN
+        params.is_running_on_polymarket = on_polymarket
+        params.use_multi_bets_mode = False
+        params.enable_multi_bets_fallback = True
+        params.store_path = store_path
+        sampler.bets = bets
+        return sampler
+
+    @staticmethod
+    def _patched(
+        sampler: SamplingBehaviour,
+        now: int,
+        epoch_start: Optional[int],
+        nothing_redeemed: bool = True,
+    ) -> ExitStack:
+        """Patch the sampler's clock, epoch and redeem result."""
+        synced_data = MagicMock(
+            epoch_start=epoch_start, found_nothing_to_redeem=nothing_redeemed
+        )
+        props = {
+            "synchronized_data": synced_data,
+            "synced_timestamp": now,
+            "kpi_is_met": False,
+            "review_bets_for_selling": False,
+        }
+        stack = ExitStack()
+        for name, value in props.items():
+            stack.enter_context(
+                patch.object(
+                    type(sampler), name, new_callable=PropertyMock, return_value=value
+                )
+            )
+        return stack
+
+    @staticmethod
+    def _decline(bet: Bet, now: int, epoch_start: Optional[int]) -> None:
+        """Record a no-trade decision as the blacklisting round does."""
+        bet.processed_timestamp = now
+        bet.decline_in_epoch(epoch_start)
+
+    def test_declined_market_is_not_asked_again_this_epoch(self) -> None:
+        """Past the cooldown a declined Omen market stays out until the next epoch."""
+        bet = _omen_market("m0")
+        sampler = self._sampler([bet])
+        self._decline(bet, NOW, EPOCH)
+
+        later = NOW + COOLDOWN * 5
+        with self._patched(sampler, later, EPOCH):
+            assert sampler.processable_bet(bet, now=later) is False
+            assert (
+                sampler._classify_processable_bet(bet, later, multi_bets_active=False)
+                == "declined_in_epoch"
+            )
+        next_epoch = NEXT_EPOCH + 60
+        with self._patched(sampler, next_epoch, NEXT_EPOCH):
+            assert sampler.processable_bet(bet, now=next_epoch) is True
+
+    def test_mech_error_is_retried_after_the_cooldown(self) -> None:
+        """A market left without an answer comes back after the cooldown in the same epoch."""
+        bet = _omen_market("m0")
+        sampler = self._sampler([bet])
+        bet.processed_timestamp = NOW
+
+        with self._patched(sampler, NOW + 60, EPOCH):
+            assert sampler._classify_processable_bet(bet, NOW + 60, False) == "cooling"
+        with self._patched(sampler, NOW + COOLDOWN, EPOCH):
+            assert sampler.processable_bet(bet, now=NOW + COOLDOWN) is True
+
+    @pytest.mark.parametrize(
+        "on_polymarket, benchmarking, epoch_start",
+        [(True, False, EPOCH), (False, True, EPOCH), (False, False, None)],
+        ids=["polystrat", "benchmarking", "unstaked"],
+    )
+    def test_only_the_cooldown_applies_elsewhere(
+        self, on_polymarket: bool, benchmarking: bool, epoch_start: Optional[int]
+    ) -> None:
+        """Polystrat, benchmarking and an unstaked service keep the cooldown only."""
+        bet = _omen_market("m0", declined_epoch_start=EPOCH, processed_timestamp=NOW)
+        sampler = self._sampler([bet], on_polymarket, benchmarking)
+
+        with self._patched(sampler, NOW + COOLDOWN, epoch_start):
+            assert sampler.processable_bet(bet, now=NOW + COOLDOWN) is True
+
+    def test_each_open_market_is_tried_once_per_epoch(self) -> None:
+        """A pool is tried once, a market created mid-epoch once, all again next epoch."""
+        bets = [_omen_market(f"m{i}") for i in range(3)]
+        sampler = self._sampler(bets)
+
+        def _sample_round(now: int, epoch_start: int) -> List[str]:
+            tried = []
+            with self._patched(sampler, now, epoch_start):
+                for step in range(len(sampler.bets) + 1):
+                    at = now + step * COOLDOWN * 2
+                    available = [
+                        b for b in sampler.bets if sampler.processable_bet(b, now=at)
+                    ]
+                    if not available:
+                        break
+                    bet = sampler.bets[sampler._sampled_bet_idx(available)]
+                    tried.append(bet.id)
+                    self._decline(bet, at, epoch_start)
+            return tried
+
+        assert sorted(_sample_round(NOW, EPOCH)) == ["m0", "m1", "m2"]
+        sampler.bets.append(_omen_market("new"))
+        assert _sample_round(NOW + 86_000 // 2, EPOCH) == ["new"]
+        assert sorted(_sample_round(NEXT_EPOCH + COOLDOWN, NEXT_EPOCH)) == [
+            "m0",
+            "m1",
+            "m2",
+            "new",
+        ]
+
+    def test_held_markets_block_the_multi_bets_fallback(self) -> None:
+        """With every unheld market declined, the agent does not re-bet a held one."""
+        declined = _omen_market("declined")
+        held = _omen_market("held", investments={"Yes": [10], "No": []})
+        sampler = self._sampler([declined, held])
+        self._decline(declined, NOW, EPOCH)
+
+        later = NOW + COOLDOWN * 2
+        with self._patched(sampler, later, EPOCH):
+            available, note = sampler._processable_bets(later)
+
+        assert available == []
+        assert "held back until the next one" in note
+
+    def test_declined_this_epoch_outranks_cooling(self) -> None:
+        """A market declined a minute ago is held for the epoch, not a pending retry."""
+        bet = _omen_market("m0")
+        sampler = self._sampler([bet])
+        self._decline(bet, NOW - 60, EPOCH)
+
+        with self._patched(sampler, NOW, EPOCH):
+            assert (
+                sampler._classify_processable_bet(bet, NOW, False)
+                == "declined_in_epoch"
+            )
+
+    @pytest.mark.parametrize(
+        "idx, nothing_redeemed, retry_pending, expected",
+        [
+            (None, True, False, True),
+            (0, True, False, False),
+            (None, False, False, False),
+            (None, True, True, False),
+        ],
+        ids=["idle", "picked-a-market", "redeemed", "mech-error-retry"],
+    )
+    def test_publishes_no_markets_left(
+        self,
+        tmp_path: Path,
+        idx: Optional[int],
+        nothing_redeemed: bool,
+        retry_pending: bool,
+        expected: bool,
+    ) -> None:
+        """Idle needs no pick, nothing redeemed and no market waiting on a retry."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        declined = _omen_market("declined")
+        # declined within the cooldown: held for the epoch, not a pending retry
+        self._decline(declined, NOW - 60, EPOCH)
+        bets = [declined]
+        if retry_pending:
+            bets.append(_omen_market("errored", processed_timestamp=NOW - 60))
+        sampler = self._sampler(bets, store_path=tmp_path)
+
+        with self._patched(sampler, NOW, EPOCH, nothing_redeemed):
+            sampler._publish_no_markets_left(idx)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert block["activity_goal"].get("no_markets_left", False) is expected
+
+    def test_stays_false_while_periods_redeem(self, tmp_path: Path) -> None:
+        """With positions to redeem one per period, idle waits for a period that redeems nothing."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler([], store_path=tmp_path)
+
+        published = []
+        for nothing_redeemed in (False, False, False, True):
+            with self._patched(sampler, NOW, EPOCH, nothing_redeemed):
+                sampler._publish_no_markets_left(None)
+            block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+            published.append(block["activity_goal"].get("no_markets_left", False))
+
+        assert published == [False, False, False, True]
+
+    @pytest.mark.parametrize(
+        "open_markets, expected", [(1, False), (0, True)], ids=["picks", "idle"]
+    )
+    def test_async_act_publishes_its_pick(
+        self, tmp_path: Path, open_markets: int, expected: bool
+    ) -> None:
+        """The flag comes from the period's own sampling result."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler(
+            [_omen_market(f"m{i}") for i in range(open_markets)], store_path=tmp_path
+        )
+        params = sampler.context.params
+        params.disabled_polymarket_tags = []
+        params.is_outcome_side_threshold_filter_enabled = False
+        sampler.context.state.liquidity_cache = {}
+        sampler.store_bets = MagicMock()  # type: ignore[method-assign]
+        sampler.hash_stored_bets = MagicMock(return_value="hash")  # type: ignore[method-assign]
+        sampler.finish_behaviour = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(None)
+        )
+
+        with (
+            self._patched(sampler, NOW, EPOCH),
+            patch.object(
+                type(sampler),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=sampler.context.state,
+            ),
+            patch.object(sampler, "_latest_ranked_at", return_value=0),
+        ):
+            gen = sampler.async_act()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert block["activity_goal"].get("no_markets_left", False) is expected
+
+    def test_a_new_market_clears_no_markets_left(self, tmp_path: Path) -> None:
+        """The signal is recomputed every period, so a picked market clears it."""
+        _write_goal_block(
+            tmp_path, {**_goal_block(EPOCH, progress=2), "no_markets_left": True}
+        )
+        sampler = self._sampler([_omen_market("new")], store_path=tmp_path)
+
+        with self._patched(sampler, NOW, EPOCH):
+            sampler._publish_no_markets_left(0)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert block["activity_goal"]["no_markets_left"] is False
+
+    @pytest.mark.parametrize(
+        "on_polymarket, benchmarking, epoch_start",
+        [(True, False, EPOCH), (False, True, EPOCH), (False, False, None)],
+        ids=["polystrat", "benchmarking", "unstaked"],
+    )
+    def test_no_signal_outside_staked_omen_trading(
+        self,
+        tmp_path: Path,
+        on_polymarket: bool,
+        benchmarking: bool,
+        epoch_start: Optional[int],
+    ) -> None:
+        """Polystrat, benchmarking and an unstaked service never write the signal."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler(
+            [], on_polymarket, benchmarking=benchmarking, store_path=tmp_path
+        )
+
+        with self._patched(sampler, NOW, epoch_start):
+            sampler._publish_no_markets_left(None)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert "no_markets_left" not in block["activity_goal"]
+
+    def test_sell_review_clears_no_markets_left(self, tmp_path: Path) -> None:
+        """A sell review samples only held markets, so it reports the agent as not idle."""
+        _write_goal_block(
+            tmp_path, {**_goal_block(EPOCH, progress=2), "no_markets_left": True}
+        )
+        sampler = self._sampler([], store_path=tmp_path)
+
+        with (
+            self._patched(sampler, NOW, EPOCH),
+            patch.object(
+                type(sampler),
+                "review_bets_for_selling",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+        ):
+            sampler._publish_no_markets_left(None)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert block["activity_goal"]["no_markets_left"] is False
+
+    def test_failed_publish_is_logged(self, tmp_path: Path) -> None:
+        """A store that cannot be written does not stop the period."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler([], store_path=tmp_path)
+
+        with (
+            self._patched(sampler, NOW, EPOCH),
+            patch(
+                "packages.valory.skills.decision_maker_abci.behaviours.sampling."
+                "set_no_markets_left",
+                side_effect=OSError("disk full"),
+            ),
+        ):
+            sampler._publish_no_markets_left(None)
+
+        sampler.context.logger.error.assert_called_once()
+
+
 class TestSortByPriorityLogic:
     """Tests for _sort_by_priority_logic."""
 
@@ -667,6 +1267,33 @@ class TestSampledBetIdx:
         idx = behaviour._sampled_bet_idx([bet1])
         assert idx == 0
 
+    @pytest.mark.parametrize(
+        "liquid_declined_at, other_declined_at",
+        ((LATEST_DECLINE_TS, 0), (LATEST_DECLINE_TS, EARLIER_DECLINE_TS)),
+        ids=("other-never-declined", "other-declined-earlier"),
+    )
+    def test_recently_declined_reprocessed_bet_is_not_sampled_next(
+        self, liquid_declined_at: int, other_declined_at: int
+    ) -> None:
+        """Of two REPROCESSED bets, the one declined most recently goes last."""
+        behaviour = _make_behaviour()
+        liquid = _make_mock_bet(
+            bet_id="liquid",
+            queue_status=QueueStatus.REPROCESSED,
+            processed_timestamp=liquid_declined_at,
+            liquidity=1000.0,
+        )
+        other = _make_mock_bet(
+            bet_id="other",
+            queue_status=QueueStatus.REPROCESSED,
+            processed_timestamp=other_declined_at,
+            liquidity=10.0,
+        )
+        behaviour.bets = [liquid, other]
+
+        idx = behaviour._sampled_bet_idx([liquid, other])
+        assert behaviour.bets[idx].id == "other"
+
 
 class TestSamplingBenchmarkingBet:
     """Tests for _sampling_benchmarking_bet."""
@@ -737,6 +1364,7 @@ class TestSample:
         exclude_neg_risk_markets=False,
         is_running_on_polymarket=False,
         disabled_polymarket_tags=None,
+        declined_market_cooldown=COOLDOWN,
     ):
         """Create a behaviour for _sample testing."""
         behaviour = _make_behaviour()
@@ -750,6 +1378,7 @@ class TestSample:
         params.sample_bets_closing_days = 60
         params.opening_margin = 100
         params.safe_voting_range = 100
+        params.declined_market_cooldown = declined_market_cooldown
         params.is_outcome_side_threshold_filter_enabled = (
             is_outcome_side_threshold_filter_enabled
         )
@@ -866,6 +1495,8 @@ class TestSample:
         assert not any(
             "filter=processable_bet.breakdown.fallback" in call for call in log_calls
         )
+        assert not any("[POLYSTRAT]" in call for call in log_calls)
+        assert any("[OMENSTRAT] filter=processable_bet " in call for call in log_calls)
 
     def test_sample_skips_zero_liquidity(self) -> None:
         """Should skip bets with zero liquidity."""
@@ -1222,6 +1853,103 @@ class TestSample:
                                 result = behaviour._sample()
 
         assert result is None
+
+    @pytest.mark.parametrize(
+        "fallback_enabled, zero_liquidity_left, expected_warning",
+        (
+            (False, False, "There were no unprocessed bets"),
+            (True, False, "There were no unprocessed bets"),
+            (False, True, "No valid bets found after liquidity validation"),
+        ),
+        ids=("fallback-off", "fallback-on", "zero-liquidity-left"),
+    )
+    def test_sample_all_cooling_waits(
+        self, fallback_enabled: bool, zero_liquidity_left: bool, expected_warning: str
+    ) -> None:
+        """With every unheld market cooling, _sample returns None, even with the fallback on."""
+        cooling = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=NOW + 86400 * 5,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=100.0,
+                processed_timestamp=NOW - 60,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i in range(3)
+        ]
+        held = _make_mock_bet(
+            bet_id="held",
+            queue_status=QueueStatus.REPROCESSED,
+            n_bets=1,
+            invested_amount=5,
+            opening_timestamp=NOW + 86400 * 5,
+        )
+        dry = replace(cooling[0], id="dry", processed_timestamp=0)
+        dry.scaledLiquidityMeasure = 0.0  # drained after discovery
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[*cooling, dry if zero_liquidity_left else held],
+            enable_multi_bets_fallback=fallback_enabled,
+        )
+
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=params,
+            ),
+            patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=NOW,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=ss,
+            ),
+            patch.object(
+                type(behaviour),
+                "kpi_is_met",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+            patch.object(
+                type(behaviour),
+                "review_bets_for_selling",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            result = behaviour._sample()
+
+        assert result is None
+        logger = behaviour.context.logger
+        info_calls = [str(c) for c in logger.info.call_args_list]
+        assert any(
+            "breakdown.strict" in call and "cooling=3 " in call for call in info_calls
+        )
+        assert not any("fallback_activated=True" in call for call in info_calls)
+        warning = str(logger.warning.call_args)
+        assert expected_warning in warning
+        assert "3 markets are cooling down for 3600s" in warning
 
     def test_sample_multi_bets_fallback(self) -> None:
         """Should use multi-bet fallback when no bets in single-bet mode."""
@@ -1602,7 +2330,7 @@ class TestSample:
             queue_status=QueueStatus.TO_PROCESS,
             opening_timestamp=now + 86400 * 5,
             liquidity=100.0,
-            poly_tags=["hide-from-new"],
+            poly_tags=["weather"],
         )
         bet.queue_status.is_expired = MagicMock(return_value=False)
 
@@ -1912,6 +2640,7 @@ class TestAsyncAct:
         """async_act should create a payload with bets_hash when a bet is sampled."""
         behaviour = _make_behaviour()
         behaviour.bets = []
+        behaviour.context.params.is_running_on_polymarket = False
 
         benchmark_ctx = MagicMock()
         behaviour.__dict__["_context"].benchmark_tool.measure.return_value = (
@@ -2043,3 +2772,539 @@ class TestAsyncAct:
         assert isinstance(payload, SamplingPayload)
         assert payload.benchmarking_finished is True
         assert payload.day_increased is True
+
+
+YES_TOKEN = "yes_token"
+NO_TOKEN = "no_token"
+EMPTY_BOOK: Dict[str, Any] = {"asks": [], "bids": []}
+NORMAL_BOOK: Dict[str, Any] = {
+    "asks": [{"price": "0.52", "size": "100"}, {"price": "0.55", "size": "50"}],
+    "bids": [{"price": "0.48", "size": "100"}],
+}
+
+
+def _book(ask: str, bid: Optional[str] = None) -> Dict[str, Any]:
+    """Return a one-level book."""
+    bids = [] if bid is None else [{"price": bid, "size": "10"}]
+    return {"asks": [{"price": ask, "size": "10"}], "bids": bids}
+
+
+def _book_bet(bet_id: str = "bet1", invested_amount: int = 0) -> Any:
+    """Return a mock Polymarket bet with both outcome token ids."""
+    bet = _make_mock_bet(bet_id=bet_id, invested_amount=invested_amount)
+    bet.outcome_token_ids = {
+        "Yes": f"{bet_id}_{YES_TOKEN}",
+        "No": f"{bet_id}_{NO_TOKEN}",
+    }
+    return bet
+
+
+ORDERBOOK_UNAVAILABLE_THRESHOLD = 5
+UNREACHABLE_FETCH: Dict[str, Any] = {
+    "error": "Connection reset by peer",
+    CLOB_UNREACHABLE: True,
+}
+
+
+def _count_orderbook_fetches(state: MagicMock, failures: int = 0) -> None:
+    """Make a mocked shared state count book fetches as SharedState does."""
+    state.orderbook_failures = failures
+    state.orderbook_failing_since = NOW if failures else None
+    state.record_orderbook_fetch.side_effect = (
+        lambda reached, timestamp: SharedState.record_orderbook_fetch(
+            state, reached, timestamp
+        )
+    )
+    state.record_orderbook_response.side_effect = (
+        lambda response, timestamp: SharedState.record_orderbook_response(
+            state, response, timestamp
+        )
+    )
+    state.is_orderbook_unavailable.side_effect = (
+        lambda threshold: SharedState.is_orderbook_unavailable(state, threshold)
+    )
+
+
+def _book_behaviour(
+    books: Dict[str, Any],
+    spread_max: float = 0.1,
+    spread_min: float = 0.0,
+    orderbook_failures: int = 0,
+) -> Tuple[SamplingBehaviour, MagicMock]:
+    """Return a Polymarket behaviour whose connection serves ``books`` by token id."""
+    behaviour = _make_behaviour()
+    params = behaviour.context.params
+    params.is_running_on_polymarket = True
+    params.polymarket_spread_min = spread_min
+    params.polymarket_spread_max = spread_max
+    params.declined_market_cooldown = COOLDOWN
+    params.orderbook_unavailable_threshold = ORDERBOOK_UNAVAILABLE_THRESHOLD
+    behaviour.context.benchmarking_mode.enabled = False
+    # an empty db: unstaked, so no epoch hold and no idle signal
+    db = behaviour.context.state.synchronized_data.db
+    db.get.side_effect = lambda key, default=None: default
+    _count_orderbook_fetches(behaviour.context.state, orderbook_failures)
+
+    def _send(payload: Dict[str, Any]):  # type: ignore[no-untyped-def]
+        return _return_gen(books.get(payload["params"]["token_id"]))
+
+    send = MagicMock(side_effect=_send)
+    behaviour.send_polymarket_connection_request = send  # type: ignore[method-assign]
+    return behaviour, send
+
+
+def _run(gen: Any) -> Any:
+    """Exhaust a generator and return its value."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration as stop:
+        return stop.value
+
+
+class TestBookCanTakeBet:
+    """Tests for the order-book check run before the mech request."""
+
+    @pytest.mark.parametrize(
+        "yes_book, no_book, expected, n_fetches",
+        [
+            (EMPTY_BOOK, EMPTY_BOOK, False, 2),
+            (EMPTY_BOOK, NORMAL_BOOK, True, 2),
+            (NORMAL_BOOK, EMPTY_BOOK, True, 1),
+            (_book("0.99"), _book("0.999"), False, 2),
+            (_book("0.99", "0.98"), _book("0.999", "0.99"), False, 2),
+            # 0.75 - 0.5 is exactly 0.25 in binary floating point
+            (_book("0.75", "0.5"), EMPTY_BOOK, True, 1),
+            (_book("0.76", "0.5"), EMPTY_BOOK, False, 2),
+            # a crossed book has a negative spread, rejected like the gate does
+            (_book("0.4", "0.5"), EMPTY_BOOK, False, 2),
+            # no bids: the spread gate is bypassed, so a bet can be placed
+            (_book("0.5"), EMPTY_BOOK, True, 1),
+            (NORMAL_BOOK, NORMAL_BOOK, True, 1),
+            # the Yes side is out of band, the No side passes
+            (_book("0.9", "0.5"), _book("0.5", "0.45"), True, 2),
+        ],
+    )
+    def test_book_shapes(
+        self,
+        yes_book: Dict[str, Any],
+        no_book: Dict[str, Any],
+        expected: bool,
+        n_fetches: int,
+    ) -> None:
+        """The market fails only when no side has a cheap enough ask in the band."""
+        bet = _book_bet()
+        behaviour, send = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": yes_book, f"bet1_{NO_TOKEN}": no_book},
+            spread_max=0.25,
+        )
+        assert _run(behaviour._book_can_take_bet(bet)) is expected
+        assert send.call_count == n_fetches
+        fetched = [c.args[0]["params"]["token_id"] for c in send.call_args_list]
+        assert fetched == [f"bet1_{YES_TOKEN}", f"bet1_{NO_TOKEN}"][:n_fetches]
+        # a readable book never takes the error path
+        behaviour.context.logger.warning.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "yes_book, no_book, reason",
+        [
+            (EMPTY_BOOK, EMPTY_BOOK, "Yes: no asks; No: no asks"),
+            (_book("0.995"), _book("0.99"), "Yes: best ask 0.995; No: best ask 0.99"),
+            (_book("0.7", "0.5"), _book("0.5", "0.3"), "Yes: spread 0.200"),
+        ],
+    )
+    def test_failure_reason_is_logged(
+        self, yes_book: Dict[str, Any], no_book: Dict[str, Any], reason: str
+    ) -> None:
+        """The skip line names the reason for each side."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": yes_book, f"bet1_{NO_TOKEN}": no_book}
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is False
+        logged = behaviour.context.logger.info.call_args[0][0]
+        assert reason in logged and "bet1" in logged
+
+    @pytest.mark.parametrize("spread_min, expected", [(0.25, True), (0.26, False)])
+    def test_spread_min_edge(self, spread_min: float, expected: bool) -> None:
+        """A spread exactly at polymarket_spread_min passes; below it fails."""
+        book = _book("0.75", "0.5")
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": book, f"bet1_{NO_TOKEN}": book},
+            spread_max=1.0,
+            spread_min=spread_min,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is expected
+
+    def test_bid_ask_spread_uses_best_levels(self) -> None:
+        """The spread is the lowest ask minus the highest bid."""
+        asks = [{"price": "0.7"}, {"price": "0.6"}, {"price": "0.8"}]
+        bids = [{"price": "0.4"}, {"price": "0.5"}, {"price": "0.3"}]
+        assert SamplingBehaviour.bid_ask_spread(asks, bids) == pytest.approx(0.1)
+
+    def test_connection_exception_proceeds(self) -> None:
+        """An exception raised at the connection boundary proceeds with the market."""
+        behaviour, send = _book_behaviour({})
+        send.side_effect = ValueError("boom")
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        assert "boom" in behaviour.context.logger.warning.call_args[0][0]
+
+    @pytest.mark.parametrize("spread_ask, expected", [("0.6", True), ("0.61", False)])
+    def test_service_spread_max(self, spread_ask: str, expected: bool) -> None:
+        """At the service band [0.0, 0.1], a 0.1 spread passes and 0.11 fails."""
+        bet = _book_bet()
+        book = _book(spread_ask, "0.5")
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": book, f"bet1_{NO_TOKEN}": book}
+        )
+        assert _run(behaviour._book_can_take_bet(bet)) is expected
+
+    @pytest.mark.parametrize(
+        "response",
+        [
+            None,
+            {"error": "No orderbook exists for the requested token id"},
+            "unexpected",
+            {"asks": [{"price": "None", "size": "1"}], "bids": []},
+        ],
+    )
+    def test_unreadable_book_proceeds(self, response: Any) -> None:
+        """A failed or unparseable fetch keeps today's behaviour: the market proceeds."""
+        bet = _book_bet()
+        behaviour, send = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": response, f"bet1_{NO_TOKEN}": EMPTY_BOOK}
+        )
+        assert _run(behaviour._book_can_take_bet(bet)) is True
+        assert send.call_count == 1
+        behaviour.context.logger.warning.assert_called_once()
+        if isinstance(response, dict) and "error" in response:
+            logged = behaviour.context.logger.warning.call_args[0][0]
+            assert response["error"] in logged
+            assert "KeyError" not in logged
+
+    def test_malformed_json_proceeds(self) -> None:
+        """A connection reply that is not JSON proceeds instead of crashing."""
+        bet = _book_bet()
+        behaviour = _make_behaviour()
+        behaviour.context.params.polymarket_spread_min = 0.0
+        behaviour.context.params.polymarket_spread_max = 0.1
+        behaviour.context.params.orderbook_unavailable_threshold = 5
+        _count_orderbook_fetches(behaviour.context.state)
+        behaviour.context.srr_dialogues.create.return_value = (
+            MagicMock(),
+            MagicMock(),
+        )
+        reply = MagicMock(payload="{not json")
+        with patch.object(
+            behaviour, "do_connection_request", return_value=_return_gen(reply)
+        ):
+            assert _run(behaviour._book_can_take_bet(bet)) is True
+
+    def test_failed_fetch_below_the_threshold_proceeds(self) -> None:
+        """A failed fetch is counted, and below the threshold the market proceeds."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": UNREACHABLE_FETCH},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 2,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        state = behaviour.context.state
+        assert state.orderbook_failures == ORDERBOOK_UNAVAILABLE_THRESHOLD - 1
+        assert state.orderbook_failing_since == NOW
+
+    @pytest.mark.parametrize("response", [None, UNREACHABLE_FETCH])
+    def test_failed_fetch_at_the_threshold_is_counted(self, response: Any) -> None:
+        """Every fetch that cannot reach the CLOB is counted."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": response},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 1,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        state = behaviour.context.state
+        assert state.orderbook_failures == ORDERBOOK_UNAVAILABLE_THRESHOLD
+        assert state.orderbook_failing_since == NOW
+
+    @pytest.mark.parametrize(
+        "response",
+        [{"error": "No orderbook exists for the requested token id"}, "unexpected"],
+    )
+    def test_answered_fetch_resets_the_count(self, response: Any) -> None:
+        """A CLOB that answers is reachable, even when the book is unreadable."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": response},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        assert behaviour.context.state.orderbook_failures == 0
+
+    def test_unparseable_book_at_the_threshold_proceeds(self) -> None:
+        """A book that arrives is a working CLOB, even when it cannot be parsed."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": {"asks": [{"price": "None"}], "bids": []}},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        assert behaviour.context.state.orderbook_failures == 0
+
+    def test_readable_book_resets_the_count(self) -> None:
+        """The first book read after a run of failures resumes the mech requests."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": NORMAL_BOOK},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD + 3,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        state = behaviour.context.state
+        assert state.orderbook_failures == 0
+        assert state.orderbook_failing_since is None
+
+    def test_no_token_ids_cannot_take_a_bet(self) -> None:
+        """A Polymarket bet without outcome token ids has no book to bet on."""
+        bet = _book_bet()
+        bet.outcome_token_ids = None
+        behaviour, send = _book_behaviour({})
+        assert _run(behaviour._book_can_take_bet(bet)) is False
+        send.assert_not_called()
+        assert "no token ids" in behaviour.context.logger.info.call_args[0][0]
+
+
+class TestAsyncActBookCheck:
+    """Tests for the order-book check in async_act."""
+
+    @staticmethod
+    def _act(
+        behaviour: SamplingBehaviour,
+        sampled: Optional[List[Optional[int]]] = None,
+        benchmarking: bool = False,
+    ) -> Tuple[SamplingPayload, Any]:
+        """Run async_act; ``_sample`` returns ``sampled`` in order, or runs for real."""
+        bm = MagicMock()
+        bm.enabled = benchmarking
+        stored: List[List[int]] = []
+        behaviour.__dict__["stored"] = stored
+        props = {
+            "benchmarking_mode": bm,
+            "synced_timestamp": NOW,
+            "kpi_is_met": False,
+            "review_bets_for_selling": False,
+            "shared_state": behaviour.context.state,
+        }
+        behaviour.context.state.liquidity_cache = {}
+        with ExitStack() as stack:
+            sample = None
+            if sampled is not None:
+                sample = stack.enter_context(
+                    patch.object(behaviour, "_sample", side_effect=sampled)
+                )
+            for name, value in props.items():
+                stack.enter_context(
+                    patch.object(
+                        type(behaviour),
+                        name,
+                        new_callable=PropertyMock,
+                        return_value=value,
+                    )
+                )
+            stack.enter_context(
+                patch.object(
+                    behaviour,
+                    "store_bets",
+                    side_effect=lambda: stored.append(
+                        [b.processed_timestamp for b in behaviour.bets]
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch.object(behaviour, "hash_stored_bets", return_value="hash")
+            )
+            stack.enter_context(
+                patch.object(
+                    behaviour, "_benchmarking_inc_day", return_value=(False, False)
+                )
+            )
+            finish = stack.enter_context(
+                patch.object(
+                    behaviour, "finish_behaviour", side_effect=lambda p: iter([None])
+                )
+            )
+            _run(behaviour.async_act())
+        return finish.call_args[0][0], sample
+
+    def test_first_fails_second_passes(self) -> None:
+        """The second candidate is sampled; the first is stamped and cools down."""
+        bad, good = _book_bet("bad"), _book_bet("good")
+        behaviour, send = _book_behaviour(
+            {
+                f"bad_{YES_TOKEN}": _book("0.999"),
+                f"bad_{NO_TOKEN}": EMPTY_BOOK,
+                f"good_{YES_TOKEN}": NORMAL_BOOK,
+            }
+        )
+        behaviour.bets = [bad, good]
+        payload, sample = self._act(behaviour, [0, 1])
+        assert payload.index == 1
+        assert payload.bets_hash == "hash"
+        assert sample.call_count == 2
+        assert send.call_count == 3
+        assert bad.processed_timestamp == NOW
+        assert good.processed_timestamp == 0
+        assert behaviour._declined_recently(bad, NOW + 1)
+        # the stamp is saved, so the cooldown carries into the next period
+        assert behaviour.__dict__["stored"] == [[NOW, 0]]
+
+    def test_stamped_market_is_not_resampled(self) -> None:
+        """With the real _sample, a market failing its book makes way for the next."""
+        bad = _book_bet("bad")
+        good = _book_bet("good")
+        for bet, liquidity in ((bad, 200.0), (good, 100.0)):
+            bet.openingTimestamp = NOW + 86400 * 5
+            bet.scaledLiquidityMeasure = liquidity
+        behaviour, send = _book_behaviour({})
+        send.side_effect = lambda payload: _return_gen(
+            EMPTY_BOOK
+            if payload["params"]["token_id"].startswith("bad")
+            else NORMAL_BOOK
+        )
+        params = behaviour.context.params
+        params.use_multi_bets_mode = False
+        params.enable_multi_bets_fallback = False
+        params.sample_bets_closing_days = 60
+        params.opening_margin = 100
+        params.safe_voting_range = 100
+        params.is_outcome_side_threshold_filter_enabled = False
+        params.exclude_neg_risk_markets = False
+        params.disabled_polymarket_tags = []
+        behaviour.bets = [bad, good]
+        payload, _ = self._act(behaviour)
+        assert payload.index == 1
+        assert bad.processed_timestamp == NOW
+        assert behaviour.__dict__["stored"] == [[NOW, 0]]
+
+    def test_every_candidate_fails(self) -> None:
+        """When every candidate within the cap fails, the cycle has no market."""
+        bets = [_book_bet(f"b{i}") for i in range(BOOK_CHECK_CANDIDATES + 1)]
+        behaviour, send = _book_behaviour({})
+        send.side_effect = lambda payload: _return_gen(EMPTY_BOOK)
+        behaviour.bets = bets
+        payload, sample = self._act(behaviour, list(range(len(bets))))
+        assert payload.index is None
+        assert payload.bets_hash is None
+        assert sample.call_count == BOOK_CHECK_CANDIDATES
+        assert send.call_count == 2 * BOOK_CHECK_CANDIDATES
+        stamped = [b.processed_timestamp for b in bets]
+        assert stamped == [NOW] * BOOK_CHECK_CANDIDATES + [0]
+        assert behaviour.__dict__["stored"] == [stamped]
+        warning = behaviour.context.logger.warning.call_args[0][0]
+        assert "failed the book check" in warning
+
+    def test_unavailable_books_stamp_no_market(self) -> None:
+        """With the order books unavailable, a failed probe ends the period unstamped."""
+        bets = [_book_bet(f"b{i}") for i in range(BOOK_CHECK_CANDIDATES + 1)]
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        send.side_effect = lambda payload: _return_gen(UNREACHABLE_FETCH)
+        behaviour.bets = bets
+        payload, sample = self._act(behaviour, list(range(len(bets))))
+        assert payload.index is None
+        assert sample.call_count == 1
+        assert send.call_count == 1
+        assert [b.processed_timestamp for b in bets] == [0] * len(bets)
+        assert behaviour.__dict__["stored"] == [[0] * len(bets)]
+        warning = behaviour.context.logger.warning.call_args[0][0]
+        assert "no market this period" in warning
+
+    def test_readable_probe_resumes_the_book_check(self) -> None:
+        """A book read by the probe resets the count, and the check goes on as usual."""
+        bet = _book_bet()
+        behaviour, send = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": NORMAL_BOOK},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert send.call_count == 2
+        assert behaviour.context.state.orderbook_failures == 0
+        assert bet.processed_timestamp == 0
+
+    def test_answered_probe_resumes_the_book_check(self) -> None:
+        """A probe the CLOB answers with an error still proves it reachable."""
+        bet = _book_bet()
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": {"error": "No orderbook exists"}},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert behaviour.context.state.orderbook_failures == 0
+
+    def test_unavailable_books_probe_a_market_with_position(self) -> None:
+        """A market holding a position is probed too while the books are unavailable."""
+        bet = _book_bet(invested_amount=10)
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index is None
+        send.assert_called_once()
+        assert bet.processed_timestamp == 0
+
+    def test_unavailable_books_and_no_token_ids(self) -> None:
+        """A market without token ids has no book to probe, so there is no market."""
+        bet = _book_bet()
+        bet.outcome_token_ids = None
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index is None
+        send.assert_not_called()
+        assert bet.processed_timestamp == 0
+
+    def test_failed_fetch_below_the_threshold_proceeds_to_the_mech(self) -> None:
+        """Below the threshold an unreadable book still lets the market through."""
+        bet = _book_bet()
+        behaviour, _ = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 1
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert behaviour.context.state.orderbook_failures == (
+            ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        assert bet.processed_timestamp == 0
+
+    def test_nothing_sampled(self) -> None:
+        """No sampled market means no book fetch."""
+        behaviour, send = _book_behaviour({})
+        behaviour.bets = []
+        payload, _ = self._act(behaviour, [None])
+        assert payload.index is None
+        send.assert_not_called()
+
+    def test_market_with_position_is_not_checked(self) -> None:
+        """A market already holding a position (rebet, sell review) skips the check."""
+        behaviour, send = _book_behaviour({})
+        behaviour.bets = [_book_bet(invested_amount=10)]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        send.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "on_polymarket, benchmarking", [(False, False), (True, True)]
+    )
+    def test_omen_and_benchmarking_never_fetch(
+        self, on_polymarket: bool, benchmarking: bool
+    ) -> None:
+        """On Omen or in benchmarking mode the sampled index is unchanged and no book is read."""
+        bet = _book_bet()
+        behaviour, send = _book_behaviour({f"bet1_{YES_TOKEN}": EMPTY_BOOK})
+        behaviour.context.params.is_running_on_polymarket = on_polymarket
+        behaviour.bets = [bet]
+        payload, sample = self._act(behaviour, [0], benchmarking=benchmarking)
+        assert payload.index == 0
+        assert sample.call_count == 1
+        send.assert_not_called()
+        assert bet.processed_timestamp == 0

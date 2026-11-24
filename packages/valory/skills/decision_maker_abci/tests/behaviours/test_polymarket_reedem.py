@@ -19,12 +19,21 @@
 
 """Tests for PolymarketRedeemBehaviour."""
 
+import json
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from eth_abi import decode as abi_decode
+from eth_abi import encode as abi_encode
+from eth_utils import to_checksum_address  # type: ignore[import-not-found]
+from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.relayer_proxy import (
+    RelayerProxyError,
+)
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
+from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
@@ -83,6 +92,8 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
+    # No DepositWallet unless a test gives one.
+    behaviour._resolve_deposit_wallet = lambda: None  # type: ignore[method-assign]
 
     return behaviour
 
@@ -290,8 +301,8 @@ class TestFetchRedeemablePositions:
         "connection_response",
         [{"error": "Error fetching positions: 503"}, None, "garbled"],
     )
-    def test_failed_read_yields_no_positions(self, connection_response) -> None:  # type: ignore[no-untyped-def]
-        """A failed read is no positions to redeem, never a non-list."""
+    def test_failed_read_returns_none(self, connection_response) -> None:  # type: ignore[no-untyped-def]
+        """A failed read returns None, never a non-list."""
         behaviour = _make_behaviour()
         behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             connection_response
@@ -305,8 +316,102 @@ class TestFetchRedeemablePositions:
         except StopIteration as e:
             result = e.value
 
-        assert result == []
+        assert result is None
         behaviour.context.logger.error.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Tests for sweep_deposit_wallet_positions
+
+DW_ADDRESS = "0xDepositWallet"
+
+
+def _sweep_dw(*responses):  # type: ignore[no-untyped-def]
+    """Run the DepositWallet sweep against ``responses``; return the behaviour and its requests."""
+    behaviour = _make_behaviour()
+    behaviour._resolve_deposit_wallet = lambda: DW_ADDRESS  # type: ignore[method-assign]
+    requests = []
+    replies = iter(responses)
+
+    def send(request_type, params):  # type: ignore[no-untyped-def]
+        requests.append({"request_type": request_type.value, "params": params})
+        yield
+        return next(replies)
+
+    behaviour._send_polymarket_request = send  # type: ignore[method-assign]
+    _run(behaviour._sweep_deposit_wallet_positions())
+    return behaviour, requests
+
+
+def _dw_read(redeemable):  # type: ignore[no-untyped-def]
+    """Return the DepositWallet positions read the sweep sends."""
+    return {
+        "request_type": "fetch_all_positions",
+        "params": {"redeemable": redeemable, "address": DW_ADDRESS},
+    }
+
+
+class TestSweepDepositWalletPositions:
+    """Tests for _sweep_deposit_wallet_positions."""
+
+    def test_sweeps_every_position_the_dw_holds(self) -> None:
+        """The resolved and open positions' token ids are swept once each."""
+        resolved = [{"asset": "11"}, {"asset": "not-an-id"}]
+        open_ = [{"asset": "22"}, {"asset": "11"}, {}]
+        behaviour, requests = _sweep_dw(resolved, open_, {"swept": True})
+
+        assert requests == [
+            _dw_read(True),
+            _dw_read(False),
+            {
+                "request_type": "sweep_dw",
+                "params": {"dw_address": DW_ADDRESS, "token_ids": [11, 22]},
+            },
+        ]
+        # One warning per position with no parseable token id.
+        assert behaviour.context.logger.warning.call_count == 2
+
+    def test_empty_dw_is_not_swept(self) -> None:
+        """A DepositWallet holding no positions gets no sweep."""
+        behaviour, requests = _sweep_dw([], [])
+
+        assert requests == [_dw_read(True), _dw_read(False)]
+        behaviour.context.logger.warning.assert_not_called()
+
+    def test_unknown_dw_is_skipped(self) -> None:
+        """With no DepositWallet recorded, nothing is read or swept."""
+        behaviour = _make_behaviour()
+        behaviour._send_polymarket_request = MagicMock()  # type: ignore[method-assign]
+
+        _run(behaviour._sweep_deposit_wallet_positions())
+
+        behaviour._send_polymarket_request.assert_not_called()
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_nothing_on_chain_is_not_reported_as_submitted(self) -> None:
+        """A sweep that finds no on-chain balance is not logged as submitted."""
+        behaviour, _ = _sweep_dw([{"asset": "11"}], [], {"swept": False})
+
+        behaviour.context.logger.warning.assert_not_called()
+        assert "nothing swept" in behaviour.context.logger.info.call_args.args[0]
+
+    @pytest.mark.parametrize("failure", [{"error": "503"}, None])
+    @pytest.mark.parametrize("failed_read", [0, 1])
+    def test_failed_read_skips_the_sweep(self, failure, failed_read) -> None:  # type: ignore[no-untyped-def]
+        """A failed resolved or open read sweeps nothing."""
+        replies = [[{"asset": "11"}], [{"asset": "22"}]]
+        replies[failed_read] = failure
+        behaviour, requests = _sweep_dw(*replies)
+
+        assert requests == [_dw_read(True), _dw_read(False)][: failed_read + 1]
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_failed_sweep_warns(self) -> None:
+        """A failed sweep is logged, not raised."""
+        behaviour, requests = _sweep_dw([{"asset": "11"}], [], None)
+
+        assert requests[-1]["request_type"] == "sweep_dw"
+        behaviour.context.logger.warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +632,198 @@ class TestBuildRedeemPositionsData:
 
 # ---------------------------------------------------------------------------
 # Tests for redeem_via_builder
+
+
+def _position(condition_id: str, size: float, cur_price: object, **extra: object) -> dict:  # type: ignore[type-arg]
+    """Return a redeemable position as the Polymarket API lists it."""
+    return {
+        "conditionId": condition_id,
+        "outcomeIndex": 0,
+        "outcome": "Yes",
+        "size": size,
+        "curPrice": cur_price,
+        "negativeRisk": False,
+        **extra,
+    }
+
+
+def _run(gen):  # type: ignore[no-untyped-def]
+    """Exhaust a generator and return its value."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration as e:
+        return e.value
+
+
+class TestPayoutsByMarket:
+    """One payout card per market from the redeemed positions."""
+
+    def test_sums_positions_of_a_market_and_drops_losers(self) -> None:
+        """Both sides of an invalid market add up; a losing or unpriced one pays nothing."""
+        positions = [
+            _position("0xa", 10, 0.5, title="Invalid?", slug="invalid"),
+            _position("0xa", 4, "0.5", title="Invalid?", slug="invalid"),
+            _position("0xb", 3, 1, title="Won?"),
+            _position("0xc", 5, 0, title="Lost?"),
+            _position("0xd", 5, None, title="Unpriced?"),
+            {"conditionId": "0xe", "size": 1},
+            _position("0xf", 2, 1),
+        ]
+
+        behaviour = _make_behaviour()
+
+        assert behaviour._payouts_by_market(positions) == [
+            [
+                {
+                    "label": "Market",
+                    "value": "Invalid?",
+                    "url": "https://polymarket.com/market/invalid",
+                },
+                {"label": "Amount", "value": "$7.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "Won?"},
+                {"label": "Amount", "value": "$3.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "0xf"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        ]
+        warnings = [c.args[0] for c in behaviour.context.logger.warning.call_args_list]
+        assert len(warnings) == 2
+        assert "'0xd'" in warnings[0]
+        assert "'0xe'" in warnings[1]
+
+    def test_builder_keeps_only_redeemed_positions_pending(self) -> None:
+        """The builder path writes no card yet; it keeps each redeem the relayer took."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.state.polymarket_builder_redeems_pending = {}
+        # The connection sends the relayer's transaction list, an error dict on a
+        # failed redeem, or null when it gives no response at all.
+        results = {
+            "0xok": [{"transactionHash": "0x1"}],
+            "0xfail": {"error": "Relayer client not initialized."},
+            "0xnone": None,
+        }
+
+        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
+            yield
+            return results[condition_id]
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        positions = [
+            _position("0xok", 2, 1, title="Paid?"),
+            _position("0xfail", 2, 1, title="Failed?"),
+            _position("0xnone", 2, 1, title="No response?"),
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+            _run(behaviour._redeem_via_builder(positions))
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xok": [positions[0]]
+        }
+
+    def test_a_resent_builder_redeem_replaces_the_pending_one(self) -> None:
+        """Redeeming a market again keeps one pending entry for it, not two."""
+        behaviour = _make_behaviour()
+        first = _position("0xa", 2, 1, title="Paid?")
+        resent = _position("0xa", 3, 1, title="Paid?")
+        other = _position("0xb", 1, 1, title="Other?")
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": [first],
+            "0xb": [other],
+        }
+
+        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
+            yield
+            return [{"transactionHash": "0x1"}]
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+            _run(behaviour._redeem_via_builder([resent]))
+
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xa": [resent],
+            "0xb": [other],
+        }
+
+    def test_a_builder_redeem_is_recorded_once_no_longer_redeemable(self) -> None:
+        """A pending market gets its card when the API stops listing it, and only then."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        landed = [
+            _position("0xa", 2, 1, title="Landed?"),
+            _position("0xa", 1, 0, title="Landed?"),
+        ]
+        waiting = [_position("0xb", 5, 1, title="Waiting?")]
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": landed,
+            "0xb": waiting,
+        }
+
+        behaviour._record_settled_builder_redeems(
+            [_position("0xb", 5, 1), _position("0xc", 1, 1)]
+        )
+
+        behaviour._record_feed_event.assert_called_once_with(  # type: ignore[attr-defined]
+            EventType.PAYOUT_COLLECTED,
+            [
+                {"label": "Market", "value": "Landed?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        )
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xb": waiting
+        }
+
+        behaviour._record_settled_builder_redeems([_position("0xb", 5, 1)])
+
+        behaviour._record_feed_event.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_safe_tx_keeps_the_cards_for_its_settlement(self) -> None:
+        """The Safe tx path keeps the cards on shared state instead of writing them."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+        positions = [
+            {"conditionId": None, "outcomeIndex": 0, "size": 9, "curPrice": 1},
+            _position("0x" + "ab" * 32, 2, 1, title="Paid?"),
+        ]
+
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx,
+        ):
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x" + "12" * 20,
+                polymarket_ctf_collateral_adapter_address="0x" + "34" * 20,
+            )
+            mock_tx.return_value = "0xfinalHash"
+            assert _run(behaviour._prepare_redeem_tx(positions)) == "0xfinalHash"
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_payouts_to_record == [
+            [
+                {"label": "Market", "value": "Paid?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ]
+        ]
 
 
 class TestRedeemViaBuilder:
@@ -1229,6 +1526,38 @@ class TestAsyncAct:
         assert isinstance(payload, PolymarketRedeemPayload)
         assert payload.event == "no_redeeming"
 
+    def test_async_act_with_nothing_left_to_redeem_settles_the_pending(self) -> None:
+        """An empty redeemable list records the pending builder redeems and drops a stale Safe build."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": [_position("0xa", 2, 1, title="Landed?")]
+        }
+        behaviour.context.state.polymarket_payouts_to_record = [
+            [{"label": "Market", "value": "Stale?"}]
+        ]
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._fetch_redeemable_positions = lambda: _return_gen([])  # type: ignore[method-assign]
+        behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            _run(behaviour.async_act())
+
+        behaviour._record_feed_event.assert_called_once_with(  # type: ignore[attr-defined]
+            EventType.PAYOUT_COLLECTED,
+            [
+                {"label": "Market", "value": "Landed?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        )
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {}
+        assert behaviour.context.state.polymarket_payouts_to_record == []
+
     def test_async_act_failed_positions_read_ends_round_without_redeeming(
         self,
     ) -> None:
@@ -1258,6 +1587,29 @@ class TestAsyncAct:
 
         assert [p.event for p in payloads_sent] == ["no_redeeming"]
         assert behaviour._utilized_tools == {"cond1": "tool1"}
+
+    def test_async_act_failed_positions_read_keeps_the_pending(self) -> None:
+        """A failed positions read writes no payout card and keeps the pending builder redeems."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        pending = {"0xa": [_position("0xa", 2, 1, title="Landed?")]}
+        behaviour.context.state.polymarket_builder_redeems_pending = pending
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            {"error": "Error fetching positions: 503"}
+        )
+        behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            _run(behaviour.async_act())
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_builder_redeems_pending == pending
 
     def test_async_act_setup_fails(self) -> None:
         """Should return early when _setup_policy_and_tools fails."""
@@ -1437,3 +1789,164 @@ class TestAsyncAct:
         assert isinstance(payloads_sent[0], PolymarketRedeemPayload)
         assert payloads_sent[0].tx_hash == "0xtxhash"
         assert payloads_sent[0].event == "prepare_tx"
+
+
+def _redeem_period(conn, builder, utilized_tools=None, policy=None, state=None, dw=None):  # type: ignore[no-untyped-def]
+    """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
+    behaviour = _make_behaviour()
+    behaviour._resolve_deposit_wallet = lambda: dw  # type: ignore[method-assign]
+    if state is not None:  # shared state kept across periods
+        behaviour.context.state = state
+    behaviour._policy = policy or _make_policy()
+    behaviour._utilized_tools = dict(utilized_tools or {})
+    behaviour._mech_tools = {"tool1"}
+    behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour.context.params = MagicMock(
+        polymarket_builder_program_enabled=builder, **pm.V2_PARAMS
+    )
+    payloads: list = []
+
+    def finish(payload):  # type: ignore[no-untyped-def]
+        payloads.append(payload)
+        yield
+
+    behaviour.finish_behaviour = finish  # type: ignore[method-assign]
+    pm._wire(behaviour, conn)
+    conn.relayer_client.execute.reset_mock()
+    with patch.multiple(
+        PolymarketRedeemBehaviour,
+        synchronized_data=PropertyMock(return_value=MagicMock(is_policy_set=True)),
+        tx_hex=PropertyMock(return_value="0xsafetx"),
+    ):
+        list(behaviour.async_act())
+    txs = list(behaviour.multisend_batches)
+    for call in conn.relayer_client.execute.call_args_list:
+        txs += call.kwargs.get("transactions") or call.args[0]
+    return payloads[0], [
+        (to_checksum_address(t.to), HexBytes(t.data), t.operation.value, int(t.value))
+        for t in txs
+    ]
+
+
+def _v1_claim(row):  # type: ignore[no-untyped-def]
+    """Return the collateral-adapter claim the V1 flow builds for a standard-market row."""
+    condition_id = bytes.fromhex(row["condition_id"][2:])
+    args = [pm.COLLATERAL_ADDRESS, bytes(32), condition_id, [1 << row["outcome_index"]]]
+    types = ["address", "bytes32", "bytes32", "uint256[]"]
+    data = pm._selector(f"redeemPositions({','.join(types)})") + abi_encode(types, args)
+    return pm.CTF_COLLATERAL_ADAPTER, data, 0, 0
+
+
+def _router_claim(row):  # type: ignore[no-untyped-def]
+    """Return the Router claim of a row's whole balance, addressed by its position ID."""
+    position_id = int(row["token_id"])  # bytes31 condition ID, then the outcome byte
+    amount = pm.ONCHAIN_BALANCE[row["token_id"]]
+    args = [(position_id >> 8).to_bytes(31, "big"), position_id & 0xFF, amount]
+    types = ["bytes31", "uint256", "uint256"]
+    data = pm._selector(f"redeem({','.join(types)})") + abi_encode(types, args)
+    return pm.ROUTER, data, 0, 0
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-untyped-def]
+    """The Safe claims winning V2 rows through the Router and its V1 rows."""
+    rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.XI_WON, pm.V1_LOSE, pm.V2_LOSE)
+    with pm._safe_world(*rows) as conn:
+        payload, claims = _redeem_period(conn, builder)
+    assert payload.event == ("done" if builder else "prepare_tx")
+    v2_claims = [_router_claim(row) for row in (pm.V2_WIN, pm.V2_WIN0, pm.XI_WON)]
+    expected = v2_claims + [_v1_claim(pm.V1_WIN), _v1_claim(pm.V1_LOSE)]
+    assert sorted(claims) == sorted(expected)
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_v2_position_losing_row_not_claimed(builder) -> None:  # type: ignore[no-untyped-def]
+    """No claim for a V2 row with no value, nor for a winning one the Safe no longer holds."""
+    rows, held = [pm.V2_LOSE, pm.V2_WIN0, pm.V1_LOSE], (pm.V2_LOSE, pm.V1_LOSE)
+    with pm._v2_world({pm.V2_SAFE: rows}, pm._ledger(pm.V2_SAFE, *held)) as conn:
+        _, claims = _redeem_period(conn, builder)
+    assert claims == [_v1_claim(pm.V1_LOSE)]
+
+
+def test_v2_position_accuracy_updated_once() -> None:
+    """A resolved V2 bet updates its tool once, as a win or a loss, over two periods."""
+    for row, won in ((pm.V2_WIN, True), (pm.V2_LOSE, False)):
+        policy, expected = _make_policy(), _make_policy()
+        expected.update_accuracy_store("tool1", winning=won)
+        tools = {row["condition_id"]: "tool1"}
+        with pm._safe_world(row) as conn:
+            for _ in range(2):  # the Data API still lists the row next period
+                payload, claims = _redeem_period(conn, False, tools, policy)
+                tools = json.loads(payload.utilized_tools)
+                assert policy.accuracy_store == expected.accuracy_store
+                # A loss leaves nothing to claim and no transaction to settle.
+                assert won or (claims, payload.event) == ([], "no_redeeming")
+
+
+def test_v2_position_claim_payout_recorded_once_landed() -> None:
+    """With the builder relayer, a Safe holding both sides gets the winner's payout card once its claim lands."""
+    state = MagicMock(polymarket_builder_redeems_pending={})
+    with (
+        pm._safe_world(pm.V2_WIN, pm.V2_LOSE) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        _redeem_period(conn, True, state=state)
+        assert list(state.polymarket_builder_redeems_pending) == [
+            pm.V2_WIN["condition_id"]
+        ]
+        # The claim lands: the winner leaves the read, the losing side stays.
+        conn.pages[pm.V2_SAFE] = [pm.V2_LOSE]
+        conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))] = 0
+        for _ in range(2):
+            _redeem_period(conn, True, state=state)
+    assert feed.call_count == 1 and feed.call_args.args[0] == EventType.PAYOUT_COLLECTED
+    assert feed.call_args.args[1][0]["value"] == pm.V2_WIN["title"]
+    assert state.polymarket_builder_redeems_pending == {}
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_dw_positions_swept_then_claimed_from_safe(builder) -> None:  # type: ignore[no-untyped-def]
+    """A DepositWallet's resolved and open shares go to the Safe, which claims the resolved one next period."""
+    rows = (pm.V1_WIN, pm.V2_OPEN)
+    balances = pm._ledger(pm.V2_DW, *rows)
+    policy = _make_policy()
+    tools = {row["condition_id"]: "tool1" for row in rows}
+    with (
+        pm._v2_world({pm.V2_DW: list(rows)}, balances) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        payload, claims = _redeem_period(conn, builder, tools, policy, dw=pm.V2_DW)
+        # Sweeping records no payout and updates no tool: the Safe redeem does both.
+        assert (payload.event, claims) == ("no_redeeming", [])
+        assert json.loads(payload.utilized_tools) == tools
+        assert policy.accuracy_store == _make_policy().accuracy_store
+        feed.assert_not_called()
+        dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
+        for call in calls:
+            pm._apply_transfer(balances, dw, call["target"], call["data"])
+        assert pm._held(balances) == pm._ledger(pm.V2_SAFE, *rows)
+        # The Data API now lists the swept shares under the Safe.
+        conn.pages[pm.V2_SAFE] = conn.pages.pop(pm.V2_DW)
+        conn.relayer_proxy.exec_wallet_batch.reset_mock()
+
+        payload, claims = _redeem_period(conn, builder, dw=pm.V2_DW)
+
+    assert payload.event == ("done" if builder else "prepare_tx")
+    assert claims == [_v1_claim(pm.V1_WIN)]
+    conn.relayer_proxy.exec_wallet_batch.assert_not_called()
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_failed_dw_sweep_leaves_the_safe_redeem_unchanged(builder) -> None:  # type: ignore[no-untyped-def]
+    """The Safe claims its positions whether or not the DepositWallet sweep went through."""
+    pages = {pm.V2_SAFE: [pm.V1_WIN], pm.V2_DW: [pm.V2_OPEN]}
+    balances = {**pm._ledger(pm.V2_SAFE, pm.V1_WIN), **pm._ledger(pm.V2_DW, pm.V2_OPEN)}
+    with pm._v2_world(pages, balances) as conn:
+        conn.relayer_proxy.exec_wallet_batch.side_effect = RelayerProxyError("down")
+        payload, claims = _redeem_period(conn, builder, dw=pm.V2_DW)
+
+    conn.relayer_proxy.exec_wallet_batch.assert_called_once()
+    assert payload.event == ("done" if builder else "prepare_tx")
+    assert claims == [_v1_claim(pm.V1_WIN)]

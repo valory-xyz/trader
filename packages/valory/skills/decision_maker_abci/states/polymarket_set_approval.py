@@ -54,6 +54,13 @@ class PolymarketSetApprovalRound(TxPreparationRound):
                 "Polymarket builder program enabled - transitioning to PostSetApprovalRound"
             )
             event = Event.DONE
+        elif synced_data.most_voted_tx_hash is None:
+            # The Safe approvals were skipped: nothing to settle, so go to
+            # PostSetApprovalRound, which re-checks the Safe on chain.
+            self.context.logger.info(
+                "No Safe approval transaction - transitioning to PostSetApprovalRound"
+            )
+            event = Event.DONE
         else:
             # Builder program disabled: use OA framework for transaction settlement
             self.context.logger.info(

@@ -30,6 +30,9 @@ from urllib.parse import urlencode
 
 import requests
 
+from packages.valory.connections.polymarket_client.connection import (
+    is_unclaimable_v2,
+)
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.mech_prepaid_reader.contract import (
@@ -45,15 +48,23 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    field,
+    format_amount,
+    format_date,
+    market_url,
+    record_event,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher as BasePredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
     build_requester_url,
     chain_id_for_platform,
-    is_flag_enabled,
     parse_requester_payload,
     rows_as_subgraph_mech_requests,
+    uses_mech_analytics,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
@@ -105,6 +116,9 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     UpdateAchievementsRound,
 )
 
+RESOLVED_STATUSES = frozenset(
+    {BetStatus.WON.value, BetStatus.LOST.value, BetStatus.INVALID.value}
+)
 DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
 _ZERO_ADDRESS = (
     "0x" + "0" * 40
@@ -488,11 +502,13 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return None
 
-            # Extract titles from positions
+            # Extract titles from positions. Unclaimable V2 rows aren't open.
             titles = {
                 p.get("title", "")
                 for p in positions
-                if isinstance(p, dict) and p.get("title", "")
+                if isinstance(p, dict)
+                and p.get("title", "")
+                and not is_unclaimable_v2(p)
             }
 
             self.context.logger.info(
@@ -557,7 +573,7 @@ class FetchPerformanceSummaryBehaviour(
         # per-window rollups for this exact Safe on this exact chain
         # (Gnosis Safe proxies CREATE2 to the same address on every
         # chain, so ``chain_id`` scoping is required).
-        if is_flag_enabled(self.params):
+        if uses_mech_analytics(self.params):
             # Async GET via the framework's ``get_http_response`` — the
             # sync ``requests.get`` path would block the FSM round
             # (Tendermint heartbeats + ABCI message pumps stall while
@@ -641,7 +657,7 @@ class FetchPerformanceSummaryBehaviour(
         # content of off-chain requests post-switch). Without this
         # branch, an on-chain ``total`` from mech-analytics minus an
         # ``open`` from the frozen subgraph over-states ``settled``.
-        if is_flag_enabled(self.params):
+        if uses_mech_analytics(self.params):
             since = datetime.fromtimestamp(self.market_open_timestamp, tz=timezone.utc)
             # Async paginate via the framework HTTP protocol (defined
             # on the parent ``APTQueryingBehaviour``) so the FSM round
@@ -1943,7 +1959,7 @@ class FetchPerformanceSummaryBehaviour(
         :param watermark: the watermark after this round
         :return: sorted request ids inside the next window, or ``None``
         """
-        if not is_flag_enabled(self.params):
+        if not uses_mech_analytics(self.params):
             return None
         cutoff = watermark - MECH_ANALYTICS_LOOKBACK_SECONDS
         return sorted(
@@ -2415,7 +2431,7 @@ class FetchPerformanceSummaryBehaviour(
         # Every request past the watermark, traded or not, as the KPI's
         # ``total`` counts them all. mech-analytics can serve a request after
         # the watermark passed it, so that path refetches a window and dedupes.
-        lookback = is_flag_enabled(self.params)
+        lookback = uses_mech_analytics(self.params)
         watermark = existing_data.last_mech_timestamp
         new_mech_requests = yield from self._fetch_all_mech_requests(
             agent_safe_address,
@@ -2929,6 +2945,75 @@ class FetchPerformanceSummaryBehaviour(
             agent_performance_summary.timestamp = existing_data.timestamp
 
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
+        self._record_resolved_markets(
+            existing_data.prediction_history,
+            agent_performance_summary.prediction_history,
+        )
+
+    def _record_resolved_markets(
+        self,
+        previous: Optional[PredictionHistory],
+        current: Optional[PredictionHistory],
+    ) -> None:
+        """Write a ``Market resolved`` card for each prediction that has left pending.
+
+        :param previous: the history saved before this refresh.
+        :param current: the history just saved.
+        """
+        if previous is None or current is None:
+            return
+        was_pending = {
+            item.get("id")
+            for item in previous.items
+            if isinstance(item, dict) and item.get("status") == BetStatus.PENDING.value
+        }
+        resolved = [
+            item
+            for item in current.items
+            if isinstance(item, dict)
+            and item.get("id") in was_pending
+            and item.get("status") in RESOLVED_STATUSES
+        ]
+        if not resolved:
+            return
+        is_polymarket = self.params.is_running_on_polymarket
+        slugs = self._polymarket_slugs() if is_polymarket else {}
+        for item in resolved:
+            try:
+                market = item["market"]
+                opened_ts = _parse_iso_timestamp(item.get("created_at"))
+                opened = format_date(opened_ts) if opened_ts is not None else "Unknown"
+                url = (
+                    market_url(True, None, slugs.get(market.get("condition_id")))
+                    if is_polymarket
+                    else market.get("external_url")
+                )
+                fields = [
+                    field("Market", market["title"], url),
+                    field("Result", item["status"].capitalize()),
+                    field(
+                        "Amount traded",
+                        format_amount(float(item["bet_amount"]), is_polymarket),
+                    ),
+                    field("Opened", opened),
+                ]
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                self.context.logger.warning(
+                    f"Not writing a resolved market for malformed prediction "
+                    f"{item.get('id')!r}: {e!r}"
+                )
+                continue
+            record_event(
+                self.params.store_path,
+                EventType.MARKET_RESOLVED,
+                fields,
+                self.context.logger,
+            )
+
+    def _polymarket_slugs(self) -> Dict[str, str]:
+        """Return the slug of each known Polymarket market by its condition id."""
+        fetcher = PolymarketPredictionsFetcher(self.context, self.context.logger)
+        return fetcher.load_market_slugs(str(self.params.store_path))
 
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:
@@ -2989,7 +3074,7 @@ class FetchPerformanceSummaryBehaviour(
             )
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return
@@ -2999,7 +3084,7 @@ class FetchPerformanceSummaryBehaviour(
             self._update_leaderboard()
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return
@@ -3075,7 +3160,7 @@ class UpdateAchievementsBehaviour(
             )
             payload = UpdateAchievementsPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return

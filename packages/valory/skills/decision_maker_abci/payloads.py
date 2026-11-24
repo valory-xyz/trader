@@ -50,6 +50,15 @@ class SamplingPayload(UpdateBetsPayload):
 
 
 @dataclass(frozen=True)
+class RankingRequestPayload(UpdateBetsPayload):
+    """Represents a transaction payload for requesting a ranking of the candidate markets."""
+
+    mech_requests: Optional[str]
+    mech_tool: Optional[str]
+    index: Optional[int]
+
+
+@dataclass(frozen=True)
 class MultisigTxPayload(BaseTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction to be sent via the agents' multisig."""
 
@@ -67,6 +76,8 @@ class RedeemPayload(MultisigTxPayload):
     utilized_tools: Optional[str] = None
     redeemed_condition_ids: Optional[str] = None
     payout_so_far: Optional[int] = None
+    # True only when the redeem check finished and found no winnings to claim
+    nothing_to_redeem: Optional[bool] = None
 
 
 @dataclass(frozen=True)

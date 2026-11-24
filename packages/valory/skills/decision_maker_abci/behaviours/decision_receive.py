@@ -26,7 +26,13 @@ from datetime import datetime
 from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_NO_MECH_RESPONSE,
+    SKIP_NO_TRADE,
+    SKIP_ORDERBOOK_UNAVAILABLE,
+    SKIP_REBET_NOT_ALLOWED,
+    SKIP_SPREAD,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -413,30 +419,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info("Conditions for rebetting are not met!")
         return rebet_allowed
 
-    def _fetch_orderbook(
-        self, token_id: str
-    ) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Fetch the orderbook for a CLOB token.
-
-        :param token_id: The CLOB token ID.
-        :yield: None
-        :return: Dict with "asks" and "bids" keys, or None on failure.
-        """
-        payload = {
-            "request_type": RequestType.FETCH_ORDER_BOOK.value,
-            "params": {"token_id": token_id},
-        }
-        response = yield from self.send_polymarket_connection_request(payload)
-        if response is None:
-            self.context.logger.warning("Failed to fetch orderbook: no response")
-            return None
-        if isinstance(response, dict) and response.get("error"):
-            self.context.logger.warning(
-                f"Failed to fetch orderbook: {response['error']}"
-            )
-            return None
-        return response
-
     def _is_profitable(
         self, prediction_response: PredictionResponse
     ) -> Generator[None, None, Tuple[bool, int, Optional[int]]]:
@@ -461,6 +443,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         orderbook_bids_yes = None
         orderbook_bids_no = None
         min_order_shares = 0.0
+        clob_reached: List[bool] = []
+        self.shared_state.orderbook_fetch_failed = False
 
         prices = bet.outcomeTokenMarginalPrices
         price_yes = prices[0] if prices else 0.0
@@ -472,14 +456,16 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 yes_token_id = bet.outcome_token_ids.get("Yes")
                 no_token_id = bet.outcome_token_ids.get("No")
                 if yes_token_id:
-                    ob_yes = yield from self._fetch_orderbook(yes_token_id)
+                    ob_yes, reached = yield from self._fetch_orderbook(yes_token_id)
+                    clob_reached.append(reached)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
                         orderbook_bids_yes = ob_yes.get("bids", [])
                         if ob_yes.get("min_order_size") is not None:
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
-                    ob_no = yield from self._fetch_orderbook(no_token_id)
+                    ob_no, reached = yield from self._fetch_orderbook(no_token_id)
+                    clob_reached.append(reached)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
                         orderbook_bids_no = ob_no.get("bids", [])
@@ -521,6 +507,12 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
+            # Only an outage leaves the market out of the cooldown.
+            if clob_reached and not any(clob_reached):
+                self.shared_state.orderbook_fetch_failed = True
+                self._record_market_skipped(bet, SKIP_ORDERBOOK_UNAVAILABLE)
+            else:
+                self._record_market_skipped(bet, SKIP_NO_TRADE)
             return False, 0, None
 
         # Optional spread gate (Polymarket / CLOB only): skip the bet when the
@@ -544,20 +536,19 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             band_is_default = lo <= 0.0 and hi >= 1.0
             if spread_asks and spread_bids:
                 try:
-                    best_ask = min(float(a["price"]) for a in spread_asks)
-                    best_bid = max(float(b["price"]) for b in spread_bids)
+                    spread = self.bid_ask_spread(spread_asks, spread_bids)
                 except (ValueError, TypeError) as exc:
                     self.context.logger.warning(
                         f"Spread gate bypassed: could not parse order book "
                         f"prices ({exc})."
                     )
                 else:
-                    spread = best_ask - best_bid
                     if not lo <= spread <= hi:
                         self.context.logger.info(
                             f"Spread gate: {spread:.4f} outside "
                             f"[{lo}, {hi}] — skipping bet."
                         )
+                        self._record_market_skipped(bet, SKIP_SPREAD)
                         return False, 0, None
             elif not band_is_default:
                 self.context.logger.warning(
@@ -582,6 +573,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             is_profitable = self.rebet_allowed(
                 prediction_response, expected_profit, strategy_vote
             )
+            if not is_profitable:
+                self._record_market_skipped(bet, SKIP_REBET_NOT_ALLOWED)
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
@@ -681,6 +674,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 return None
 
             prediction_response = self._get_decision()
+            if prediction_response is None and not self.review_bets_for_selling_mode:
+                self._record_market_skipped(
+                    self.get_active_sampled_bet(), SKIP_NO_MECH_RESPONSE
+                )
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None

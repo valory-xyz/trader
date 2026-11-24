@@ -23,6 +23,7 @@
 import enum
 import json
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type
@@ -34,6 +35,7 @@ from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
     is_valid_activity_goal,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import FeedEntry
 from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -51,6 +53,8 @@ APPROVED_MECH_PAYMENT_TYPES_STORE = "approved_mech_payment_types.json"
 ADDRESS_PATTERN = re.compile(r"0x[0-9a-f]{40}")
 ACTIVITY_GOAL_FIELD = "activity_goal"
 MAX_MECH_OFFERS = 20
+# A message whose answer never came back stops blocking its resend after this.
+ANSWERING_TIMEOUT_SECONDS = 300
 
 FILE_READ_MODE = "r"
 
@@ -122,6 +126,41 @@ class Offer:
     price_text: str
 
 
+@dataclass(frozen=True)
+class ConfigChange:
+    """One setting a chat change sets, as the user reads it."""
+
+    setting: str
+    before: str
+    after: str
+
+
+@dataclass(frozen=True)
+class ConfigProposal:
+    """A config change from the chat, kept unapplied until the user confirms it."""
+
+    config: Dict[str, Any]
+    changes: List[ConfigChange]
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    """A chat message being answered: Pearl's id for it and its line as written.
+
+    ``proposal`` is the change its reply asks to confirm, kept here until that
+    reply is written so that a turn which fails leaves nothing to confirm.
+    ``applied_change`` marks a reply acknowledging a change already applied,
+    which a resend must report rather than answer anew. ``attempt`` tells this
+    answer apart from a resend's, and survives ``replace``.
+    """
+
+    client_id: str
+    message: FeedEntry
+    proposal: Optional[ConfigProposal] = None
+    applied_change: bool = False
+    attempt: object = field(default_factory=object, compare=False, repr=False)
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -155,6 +194,42 @@ class SharedState(BaseSharedState):
         # None until the first ToolSelectionRound runs; consumers fall back to
         # the raw `available_mech_tools` synced-data set in that window.
         self.available_prediction_tools: Optional[FrozenSet[str]] = None
+
+        # In memory only, so a restart drops them: the attempt answering each
+        # chat message and when it started, and the change waiting for confirmation.
+        self._answering: Dict[str, Tuple[object, float]] = {}
+        self.config_proposal: Optional[ConfigProposal] = None
+        # The acknowledgement of an applied change whose reply could not be
+        # written, by client id, for the resend to write.
+        self.unsaved_replies: Dict[str, str] = {}
+
+    def is_answering(self, client_id: str) -> bool:
+        """Return whether the message with this client id is still being answered."""
+        answering = self._answering.get(client_id)
+        return (
+            answering is not None
+            and time.time() - answering[1] < ANSWERING_TIMEOUT_SECONDS
+        )
+
+    def start_answering(self, turn: ChatTurn) -> None:
+        """Mark the turn's message as being answered by it."""
+        self._answering[turn.client_id] = (turn.attempt, time.time())
+
+    def finish_answering(self, turn: ChatTurn) -> None:
+        """Mark the turn's message as no longer being answered, unless a resend took it over."""
+        answering = self._answering.get(turn.client_id)
+        if answering is not None and answering[0] is turn.attempt:
+            del self._answering[turn.client_id]
+
+    def take_config_proposal(self) -> Optional[ConfigProposal]:
+        """Return the change waiting for confirmation and forget it: it gets one reply."""
+        proposal, self.config_proposal = self.config_proposal, None
+        return proposal
+
+    def restore_config_proposal(self, proposal: ConfigProposal) -> None:
+        """Put back a change its confirmation could not decide, unless a newer one is waiting."""
+        if self.config_proposal is None:
+            self.config_proposal = proposal
 
     def setup(self) -> None:
         """Set up the shared state and apply boot-time withdrawal flag auto-clear.

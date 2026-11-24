@@ -116,6 +116,15 @@ class TestFPMM:
         assert fpmm.creationTimestamp == 1500
         assert fpmm.templateId == 5
 
+    def test_title_drops_outcomes_and_category(self) -> None:
+        """The title is the question before the Omen data separator."""
+        fpmm = self._make_fpmm(
+            question=Question(
+                id=b"\x01" * 32, data='Will it rain?\u241f"Yes","No"\u241fweather'
+            )
+        )
+        assert fpmm.title == "Will it rain?"
+
     def test_fpmm_dict_condition_converted(self) -> None:
         """Test that a dict condition is converted to Condition."""
         condition_dict = {"id": "0x" + "01" * 32, "outcomeSlotCount": 2}

@@ -17,13 +17,14 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Polymarket withdrawal behaviour — sells unredeemable CTF positions on FAK."""
+"""Polymarket withdrawal behaviour — sells unredeemable positions on FAK."""
 
 import json
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
+from packages.valory.connections.polymarket_client.connection import V2_BALANCE_KEY
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
@@ -32,6 +33,10 @@ from packages.valory.skills.chatui_abci.models import (
     WITHDRAWAL_STATE_SELLING,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    ORDER_STATUS_CANCELED,
+    ORDER_STATUS_CANCELED_MARKET_RESOLVED,
+    ORDER_STATUS_INVALID,
+    ORDER_STATUS_MATCHED,
     PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import WithdrawalPayload
@@ -57,17 +62,6 @@ TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 # behaviour signals ``in_flight`` and defers the position to the next sweep
 # cycle rather than racing the in-flight match.
 DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 60.0)
-# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
-# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
-# only non-terminal value; everything else means we can stop polling.
-GET_ORDER_TERMINAL_STATUSES = frozenset(
-    {
-        "ORDER_STATUS_MATCHED",
-        "ORDER_STATUS_CANCELED",
-        "ORDER_STATUS_INVALID",
-        "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
-    }
-)
 # Terminal status vocabulary observed empirically from get_order responses.
 # Permanent-failure values (``invalid``, ``market_resolved``) short-circuit
 # the per-position retry loop because retrying them is mathematically
@@ -75,10 +69,10 @@ GET_ORDER_TERMINAL_STATUSES = frozenset(
 # production data we cannot distinguish FAK kills from external cancels.
 # Unrecognized values fall through to ``unmatched`` (retryable) defensively.
 TERMINAL_STATUS_MAP = {
-    "ORDER_STATUS_MATCHED": "matched",
-    "ORDER_STATUS_CANCELED": "canceled",
-    "ORDER_STATUS_INVALID": "invalid",
-    "ORDER_STATUS_CANCELED_MARKET_RESOLVED": "market_resolved",
+    ORDER_STATUS_MATCHED: "matched",
+    ORDER_STATUS_CANCELED: "canceled",
+    ORDER_STATUS_INVALID: "invalid",
+    ORDER_STATUS_CANCELED_MARKET_RESOLVED: "market_resolved",
 }
 PERMANENT_FAILURE_STATUSES = frozenset({"invalid", "market_resolved"})
 # Polymarket CTF tokens use 6-decimal fixed-point scaling for share amounts
@@ -94,7 +88,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     1. Persist ``selling`` to the JSON store.
     2. Refresh CLOB balance/allowance (top-level retry).
     3. Fetch unredeemable positions (top-level retry).
-    4. Filter to sellable shares (size > epsilon, has CTF token id).
+    4. Filter to sellable shares (size > epsilon, has a token id).
     5. Per position: FAK sell, retry on partial / SDK errors (per-position retry).
     6. Append fill / error records as they happen.
     7. Persist ``complete`` (no errors) or ``errored`` (any errors), then finish.
@@ -142,11 +136,9 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         # CLOB v2: realized pUSD from the sells lands in the DepositWallet.
         # Sweep it back to the Safe before the cycle wraps up (idempotent —
         # a failed/empty sweep is non-fatal; the next top-up reclaims any
-        # residual via its opportunistic sweep). Pass the sold token ids so any
-        # CTF that did NOT fully sell (dust / in-flight / permanent-failure
-        # positions) is also returned to the Safe rather than stranded in the
-        # transient DW — there may be no subsequent buy to reclaim it.
-        token_ids = self._sellable_token_ids(sellable)
+        # residual via its opportunistic sweep). Include unsold positions too:
+        # there may be no later buy to reclaim them from the DW.
+        token_ids = self._asset_token_ids(sellable)
         yield from self._sweep_dw_to_safe(token_ids)
 
         store = self._read_store()
@@ -156,27 +148,12 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             self._set_state(WITHDRAWAL_STATE_COMPLETE)
         yield from self._finish()
 
-    @staticmethod
-    def _sellable_token_ids(sellable: List[Dict[str, Any]]) -> List[int]:
-        """Integer CTF token ids of the positions the sweep should reclaim.
-
-        :param sellable: the filtered sellable position records.
-        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
-        """
-        token_ids: List[int] = []
-        for p in sellable:
-            try:
-                token_ids.append(int(p["asset"]))
-            except (KeyError, TypeError, ValueError):
-                continue
-        return token_ids
-
     def _sweep_dw_to_safe(
         self, token_ids: Optional[List[int]] = None
     ) -> Generator[None, None, None]:
-        """Sweep the DepositWallet's pUSD (and any unsold CTF) back to the Safe.
+        """Sweep the DepositWallet's pUSD (and any unsold shares) back to the Safe.
 
-        :param token_ids: CTF token ids whose residual DW balance to also sweep;
+        :param token_ids: position token ids whose residual DW balance to also sweep;
             ``None`` sweeps only pUSD (the opportunistic post-buy path).
         :yield: framework yields between dispatch and the connection response.
         """
@@ -248,7 +225,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     ) -> Generator[None, None, Tuple[Optional[List[Dict[str, Any]]], Optional[str]]]:
         """Send FETCH_ALL_POSITIONS with ``redeemable=False`` against the DW.
 
-        The withdrawal top-up round has already moved every sellable CTF
+        The withdrawal top-up round has already moved every sellable
         position Safe→DepositWallet, so the positions now live under the DW —
         querying the Safe (the connection default) would return nothing. Pass
         the DW address so the sell-loop and locked-funds snapshot see the
@@ -281,14 +258,14 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
         """Send SELL_POSITION; return the normalized ``(response, error)`` tuple.
 
-        :param token_id: the CTF token id to sell.
+        :param token_id: the position token id to sell.
         :param amount: shares to sell on this attempt (may be the full size or
             a residual after a partial fill).
         :yield: framework yields between dispatch and response.
         :return: normalized ``(payload_dict, error_or_none)``.
         """
         params: Dict[str, Any] = {"token_id": token_id, "amount": amount}
-        # CLOB v2: the sell is funded by the DepositWallet (the CTF shares were
+        # CLOB v2: the sell is funded by the DepositWallet (the shares were
         # moved Safe→DW by the withdrawal top-up round). Pass it so the
         # connection signs with signature_type=3 / funder=DW.
         dw_address = self._resolve_deposit_wallet()
@@ -300,77 +277,6 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         }
         response = yield from self.send_polymarket_connection_request(payload)
         return self._extract_response_or_error(response)
-
-    def _request_get_order(
-        self,
-        order_id: str,
-    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Issue a single GET_ORDER lookup against the connection.
-
-        :param order_id: CLOB order id to look up.
-        :yield: framework yields between dispatch and response.
-        :return: ``(order_payload_or_none, error_or_none)``. The payload is
-            the raw ``client.get_order`` response (may be a falsy/None body
-            if the data API hasn't indexed the order yet).
-        """
-        payload = {
-            "request_type": RequestType.GET_ORDER.value,
-            "params": {"order_id": order_id},
-        }
-        response = yield from self.send_polymarket_connection_request(payload)
-        return self._extract_response_or_error(response)
-
-    def _poll_order_until_terminal_cooperative(
-        self,
-        order_id: str,
-    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Drive the cooperative poll loop for a delayed order.
-
-        Uses ``yield from self.sleep(...)`` between polls so the connection's
-        worker thread is free to serve other consumers during the wait.
-
-        Three return shapes distinguish the outcome:
-
-        - ``(terminal_payload, None)`` — terminal status reached.
-        - ``(None, None)`` — cap exhausted while still LIVE (in_flight defer).
-        - ``(None, error_string)`` — every poll attempt errored, distinct
-          from a LIVE-exhausted in_flight. Lets the caller record the
-          parent position with a "polymarket API unreachable" reason
-          rather than the misleading in-flight defer reason.
-
-        :param order_id: CLOB order id to look up.
-        :yield: framework yields between cooperative sleeps and dispatch.
-        :return: tuple of ``(terminal_payload_or_none, error_string_or_none)``.
-        """
-        error_count = 0
-        last_error: Optional[str] = None
-        for backoff_s in DELAYED_ORDER_POLL_BACKOFFS_S:
-            yield from self.sleep(backoff_s)
-            order, error = yield from self._request_get_order(order_id)
-            if error is not None:
-                error_count += 1
-                last_error = error
-                self.context.logger.warning(
-                    f"withdrawal: get_order failed for {order_id}: {error}"
-                )
-                continue
-            # The SDK can return ``None`` shortly after ``post_order`` —
-            # the data API hasn't indexed the new order yet. Keep polling
-            # rather than crash on ``.get()``.
-            if not order:
-                continue
-            status = order.get("status") or ""
-            if status in GET_ORDER_TERMINAL_STATUSES:
-                return order, None
-        # exhausted
-        if error_count == len(DELAYED_ORDER_POLL_BACKOFFS_S):
-            return None, (
-                f"all {error_count} poll attempts errored " f"(last: {last_error})"
-            )
-        self.context.logger.warning(
-            f"withdrawal: order {order_id} still delayed after poll exhausted"
-        )
-        return None, None
 
     def _fill_from_terminal_get_order(
         self, order: Dict[str, Any], order_id: str
@@ -428,25 +334,6 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             "fill_price": fill_price,
             "raw": order,
         }
-
-    @staticmethod
-    def _extract_response_or_error(
-        response: Any,
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        """Coerce a connection-layer response into ``(payload, error)``.
-
-        The connection returns ``{"error": "..."}`` on failure (preserving
-        any extra keys like ``signed_order_json``) and a normal dict on
-        success. ``None`` means dispatch / timeout failure.
-
-        :param response: raw response from the polymarket connection layer.
-        :return: a normalized ``(payload_dict_or_none, error_or_none)`` tuple.
-        """
-        if response is None:
-            return None, "no response from connection"
-        if isinstance(response, dict) and response.get("error"):
-            return response, str(response["error"])
-        return response, None
 
     # ------------------------------------------------------------------ #
     # Position filtering                                                 #
@@ -603,7 +490,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             process normally.
         """
         terminal, poll_error = yield from self._poll_order_until_terminal_cooperative(
-            order_id
+            order_id, DELAYED_ORDER_POLL_BACKOFFS_S, "withdrawal: "
         )
         if poll_error is not None:
             # Every poll attempt errored — distinct from an in-flight defer. The
@@ -750,6 +637,12 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         store["withdrawal_state"] = state
         self._write_store(store)
         self.context.logger.info(f"withdrawal: state -> {state}")
+        if state in (WITHDRAWAL_STATE_COMPLETE, WITHDRAWAL_STATE_ERRORED):
+            self._record_positions_sold(
+                store.get("withdrawal_fills") or [],
+                store.get("withdrawal_errors") or [],
+                state == WITHDRAWAL_STATE_COMPLETE,
+            )
 
     def _reset_session_records(self) -> None:
         """Clear ``withdrawal_fills`` and ``withdrawal_errors`` on disk."""
@@ -845,6 +738,27 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
                 f"(fetch failed: {error})"
             )
             return
+        # V2 positions are held in the Safe, so count its open V2 rows too. With
+        # no DepositWallet the read above was already the Safe's.
+        if self._resolve_deposit_wallet():
+            safe_positions = yield from self.send_polymarket_connection_request(
+                {
+                    "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                    "params": {"redeemable": False},
+                }
+            )
+            if not isinstance(safe_positions, list):
+                self.context.logger.warning(
+                    f"withdrawal: skipping locked-funds snapshot "
+                    f"(Safe fetch failed: {safe_positions})"
+                )
+                return
+            assets = {p.get("asset") for p in positions}
+            positions += [
+                p
+                for p in safe_positions
+                if V2_BALANCE_KEY in p and p.get("asset") not in assets
+            ]
         try:
             locked = round(
                 sum(

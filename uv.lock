@@ -339,11 +339,11 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2026.2.25"
+version = "2026.10.19"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/af/2d/7bf41579a8986e348fa033a31cdd0e4121114f6bce2457e8876010b092dd/certifi-2026.2.25.tar.gz", hash = "sha256:e887ab5cee78ea814d3472169153c2d12cd43b14bd03329a39a9c6e2e80bfba7", size = 155029, upload-time = "2026-02-25T02:54:17.342Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/bd/1436c50cc46699de0230fbaacc1d1de7bfec413176099949e9d5112e88f2/certifi-2026.10.19.tar.gz", hash = "sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae", size = 137598, upload-time = "2026-10-20T02:24:16.604Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/3c/c17fb3ca2d9c3acff52e30b309f538586f9f5b9c9cf454f3845fc9af4881/certifi-2026.2.25-py3-none-any.whl", hash = "sha256:027692e4402ad994f1c42e52a4997a9763c646b73e4096e4d5d6db8af1d6f0fa", size = 153684, upload-time = "2026-02-25T02:54:15.766Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl", hash = "sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b", size = 136464, upload-time = "2026-10-20T02:24:15.072Z" },
 ]
 
 [[package]]
@@ -2386,7 +2386,7 @@ dependencies = [
 
 [[package]]
 name = "py-clob-client-v2"
-version = "1.0.1"
+version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eth-abi" },
@@ -2396,9 +2396,9 @@ dependencies = [
     { name = "poly-eip712-structs" },
     { name = "py-order-utils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/cf/3b0761a5e1715b52f927b0fbc7c8e545736e8c53811065ee2da7a8b51779/py_clob_client_v2-1.0.1.tar.gz", hash = "sha256:4d2e4bf6873719d3f9c8bcdc1f1590ec5e9597d6859d93f53d24dd3521c6fb2d", size = 45436, upload-time = "2026-05-09T13:00:52.752Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/04/dc16a34571f5f2cafa8db7c27fbb1e030103f29c77ee5c7609fcc6725150/py_clob_client_v2-1.2.1.tar.gz", hash = "sha256:c405f6c57db8faf0dc81569ef4e8f7025f608c15b9cfa2ff202cf832bb0a59a9", size = 53302, upload-time = "2026-10-15T08:26:21.849Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/7b/04c1d94e71a0c2ef0b228f2b3e98e2815d1e9f92fb291ec6b2321fab27b5/py_clob_client_v2-1.0.1-py3-none-any.whl", hash = "sha256:6f288f8078878779d7a30cdcf0ecd196b57c94627fa0bfabf24ed8ab787b8b1d", size = 49042, upload-time = "2026-05-09T13:00:51.076Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/c7/c3fc6a54499f3dab7e1509e1a015922f422d3cb0b3e30658f314823ef69e/py_clob_client_v2-1.2.1-py3-none-any.whl", hash = "sha256:9dc00b444632cdb9aeae1c80490a3df0ff50dd5694a015480396cc4f77e7c6ae", size = 51828, upload-time = "2026-10-15T08:26:20.544Z" },
 ]
 
 [[package]]
@@ -3437,7 +3437,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = "==3.13.4" },
     { name = "asn1crypto", specifier = "==1.4.0" },
-    { name = "certifi", specifier = "==2026.2.25" },
+    { name = "certifi", specifier = "==2026.10.19" },
     { name = "cffi", specifier = "<2.1.0" },
     { name = "ecdsa", specifier = "==0.19.2" },
     { name = "eth-abi", specifier = "==5.2.0" },
@@ -3464,7 +3464,7 @@ requires-dist = [
     { name = "protobuf", specifier = "==5.29.6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
     { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
-    { name = "py-clob-client-v2", specifier = "==1.0.1" },
+    { name = "py-clob-client-v2", specifier = "==1.2.1" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pyinstaller", specifier = "==6.19.0" },
     { name = "pytest", specifier = "==8.4.2" },

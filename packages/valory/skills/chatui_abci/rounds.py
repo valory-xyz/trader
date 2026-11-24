@@ -62,6 +62,8 @@ class SynchronizedData(BaseSynchronizedData):
         MechInformationRound. Addresses are lowercased to match the format
         produced by the Autonolas subgraph and the `valid_mechs`
         normalization in mech-interact.
+
+        :return: the lowercased addresses of the visible mechs.
         """
         return {str(m["address"]).lower() for m in self._mechs_info()}
 

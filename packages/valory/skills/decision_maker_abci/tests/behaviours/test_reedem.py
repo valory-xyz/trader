@@ -22,6 +22,7 @@
 import json
 from io import StringIO
 from pathlib import Path
+from typing import Any, Dict, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -113,6 +114,9 @@ def _make_redeem_behaviour() -> RedeemBehaviour:
     behaviour._payouts = {}  # type: ignore[no-untyped-def]
     behaviour._built_data = None
     behaviour._current_redeem_info = None
+    behaviour._preparation_failed = False
+    behaviour._fetch_status = FetchStatus.NONE
+    behaviour._call_failed = False
     behaviour._expected_winnings = 0
     behaviour._history_hash = ZERO_BYTES
     behaviour._claim_winnings_simulation_ok = False
@@ -542,7 +546,10 @@ class TestSetBlockNumber:
             call_count[0] += 1
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "12345"}
+            return {
+                "id": "0x84f77003c15a6bd451e80fe0de2629f5fc1f127890d5789217043900b76fdc62",
+                "number": "12345",
+            }
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -551,8 +558,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 12345
 
-    def test_set_block_number_non_digit_id(self) -> None:
-        """Should not set earliest_block_number when id is not a digit."""
+    def test_set_block_number_non_digit_number(self) -> None:
+        """Should not set earliest_block_number when number is not a digit."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -560,7 +567,7 @@ class TestSetBlockNumber:
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "not_a_number"}
+            return {"number": "not_a_number"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -588,8 +595,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 0
 
-    def test_set_block_number_missing_id_key(self) -> None:
-        """Should not update block number when id key is missing."""
+    def test_set_block_number_missing_number_key(self) -> None:
+        """Should not update block number when number key is missing."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -621,7 +628,7 @@ class TestSetBlockNumber:
             else:
                 behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "999"}
+            return {"number": "999"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -1225,6 +1232,92 @@ class TestGetRedeemInfo:
 
         assert len(behaviour.trades) == 0
 
+    @pytest.mark.parametrize(
+        "page_failed, gave_up, lookup_resets, expected",
+        [
+            (True, False, True, True),
+            (True, True, True, True),
+            (True, True, False, True),
+            (False, False, True, False),
+        ],
+        ids=["partial-page", "gave-up", "gave-up-without-lookup", "fetched"],
+    )
+    def test_get_redeem_info_records_a_failed_fetch(
+        self, page_failed: bool, gave_up: bool, lookup_resets: bool, expected: bool
+    ) -> None:
+        """A failed trades page is recorded, even when a later block lookup succeeds."""
+        behaviour = _make_redeem_behaviour()
+        behaviour._prepare_fetching = MagicMock(  # type: ignore[method-assign]
+            side_effect=[True, False]
+        )
+        progress = RedeemingProgress()
+        # left over from an earlier check
+        progress.trades_fetch_failed = not expected
+
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
+            """Return one page, failing as asked."""
+            behaviour._call_failed = page_failed
+            behaviour._fetch_status = (
+                FetchStatus.FAIL if gave_up else FetchStatus.IN_PROGRESS
+            )
+            yield
+            return [{"id": "trade"}]
+
+        def mock_update_redeem_info(chunk):  # type: ignore[no-untyped-def]
+            """Stand in for the block lookup, which resets the state when it runs."""
+            if lookup_resets:
+                behaviour._call_failed = False
+                behaviour._fetch_status = FetchStatus.SUCCESS
+            yield
+
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
+        behaviour.update_redeem_info = mock_update_redeem_info  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "redeeming_progress", new_callable=PropertyMock
+        ) as mock_rp:
+            mock_rp.return_value = progress
+            _exhaust_gen(behaviour._get_redeem_info())
+
+        assert progress.trades_fetch_failed is expected
+
+    def test_get_redeem_info_forgets_a_page_that_succeeds_on_retry(self) -> None:
+        """A failed page that the loop refetches in full leaves the fetch complete."""
+        behaviour = _make_redeem_behaviour()
+        behaviour._prepare_fetching = MagicMock(  # type: ignore[method-assign]
+            side_effect=[True, True, False]
+        )
+        progress = RedeemingProgress()
+        results = iter(
+            [
+                (True, FetchStatus.IN_PROGRESS, None),  # failed, retried
+                (False, FetchStatus.SUCCESS, [{"id": "trade"}]),  # refetched in full
+            ]
+        )
+
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
+            """Fail once, then succeed."""
+            failed, status, chunk = next(results)
+            behaviour._call_failed = failed
+            behaviour._fetch_status = status
+            yield
+            return chunk
+
+        def mock_update_redeem_info(chunk):  # type: ignore[no-untyped-def]
+            """No block lookup changes the state here."""
+            yield
+
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
+        behaviour.update_redeem_info = mock_update_redeem_info  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "redeeming_progress", new_callable=PropertyMock
+        ) as mock_rp:
+            mock_rp.return_value = progress
+            _exhaust_gen(behaviour._get_redeem_info())
+
+        assert progress.trades_fetch_failed is False
+
     def test_get_redeem_info_with_chunk(self) -> None:
         """Should process fetched chunks."""
         behaviour = _make_redeem_behaviour()
@@ -1647,6 +1740,48 @@ class TestCheckAlreadyRedeemedViaSubgraph:
             result = _exhaust_gen(gen)
 
         assert result is False  # type: ignore[no-untyped-def]
+
+    @pytest.mark.parametrize(
+        "trades, expected, warnings",
+        [([{"trade1": "data"}], False, 1), ([], True, 0)],
+    )
+    def test_no_positions(
+        self, trades: List[Dict[str, Any]], expected: bool, warnings: int
+    ) -> None:
+        """No positions fail the check only when the Safe has trades."""
+        behaviour = _make_redeem_behaviour()
+        mock_context = MagicMock()
+
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
+            """Mock fetch_trades."""
+            yield
+            return trades
+
+        def mock_fetch_user_positions(safe):  # type: ignore[no-untyped-def]
+            """Mock fetch_user_positions for a user the subgraph does not know."""
+            yield
+            return []
+
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
+
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(type(behaviour), "context", new_callable=PropertyMock) as ctx,
+        ):
+            mock_rp.return_value = RedeemingProgress()
+            mock_sd.return_value = MagicMock(safe_contract_address="0xSafe")
+            ctx.return_value = mock_context
+
+            result = _exhaust_gen(behaviour._check_already_redeemed_via_subgraph())
+
+        assert result is expected
+        assert mock_context.logger.warning.call_count == warnings
 
 
 class TestCheckAlreadyRedeemed:
@@ -2760,6 +2895,8 @@ class TestProcessCandidate:
             result = _exhaust_gen(gen)
 
         assert result is False
+        # a claimable position that failed to prepare is not "nothing to redeem"
+        assert behaviour._preparation_failed is True
 
     def test_subgraph_condition_not_in_unredeemed(self) -> None:
         """Should return False when using subgraph and condition not in unredeemed."""
@@ -2881,6 +3018,8 @@ class TestPrepareSafeTx:
         behaviour = _make_redeem_behaviour()
         trade = _make_trade()
         behaviour.trades = {trade}
+        # left over from an earlier period's check
+        behaviour._preparation_failed = True
 
         def mock_process_candidate(candidate):  # type: ignore[no-untyped-def]
             """Mock _process_candidate returning False."""
@@ -2893,6 +3032,7 @@ class TestPrepareSafeTx:
         result = _exhaust_gen(gen)
 
         assert result is None
+        assert behaviour._preparation_failed is False
 
     def test_with_winnings(self) -> None:
         """Should prepare multisend tx when winnings are found."""
@@ -3297,6 +3437,71 @@ class TestNormalAct:
             result = _exhaust_gen(gen)
 
         assert isinstance(result, RedeemPayload)
+        # the check finished and found no winnings
+        assert result.nothing_to_redeem is True
+
+    @pytest.mark.parametrize(
+        "loaded_progress, trades_fetch_failed, preparation_failed, reason",
+        [
+            (False, True, False, "the trades fetch ended incomplete"),
+            (False, False, True, "a claimable position failed to prepare"),
+            (True, False, False, "the trades come from an earlier run's fetch"),
+        ],
+        ids=["trades-fetch-failed", "position-failed-to-prepare", "progress-loaded"],
+    )
+    def test_normal_act_incomplete_check_is_not_nothing_to_redeem(
+        self,
+        loaded_progress: bool,
+        trades_fetch_failed: bool,
+        preparation_failed: bool,
+        reason: str,
+    ) -> None:
+        """A check that may have missed a claimable position never reports nothing to redeem."""
+        behaviour = _make_redeem_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+
+        progress = RedeemingProgress()
+        # event-based redeeming keeps the progress until a redeem tx settles
+        progress.check_started = loaded_progress
+        progress.check_from_block = 100
+        progress.check_to_block = 100
+        progress.cleaned = True
+        progress.trades_fetch_failed = trades_fetch_failed
+
+        def mock_get_redeem_info():  # type: ignore[no-untyped-def]
+            """Mock a fresh fetch."""
+            yield
+
+        def mock_clean_redeem_info():  # type: ignore[no-untyped-def]
+            """Mock a check that finishes."""
+            yield
+            return True
+
+        def mock_prepare_safe_tx():  # type: ignore[no-untyped-def]
+            """Mock _prepare_safe_tx finding no winnings it could build."""
+            behaviour._preparation_failed = preparation_failed
+            yield
+            return None
+
+        behaviour._load_progress = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_progress = MagicMock()  # type: ignore[method-assign]
+        behaviour._get_redeem_info = mock_get_redeem_info  # type: ignore[method-assign]
+        behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
+        behaviour._prepare_safe_tx = mock_prepare_safe_tx  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "redeeming_progress", new_callable=PropertyMock
+        ) as mock_rp:
+            mock_rp.return_value = progress
+            result = _exhaust_gen(behaviour._normal_act())
+
+        assert isinstance(result, RedeemPayload)
+        assert result.nothing_to_redeem is None
+        assert result.tx_hash is None
+        behaviour.context.logger.warning.assert_called_once_with(
+            f"No winnings found, but {reason}: not reporting nothing to redeem."
+        )
 
     def test_normal_act_resume_from_progress(self) -> None:
         """Should load progress when check_started is True."""
@@ -3385,6 +3590,7 @@ class TestNormalAct:
 
         assert isinstance(result, RedeemPayload)
         assert result.tx_hash == "0xresult_tx"
+        assert result.nothing_to_redeem is None
 
     def test_normal_act_not_cleaned(self) -> None:
         """Should return basic payload when not cleaned."""
@@ -3422,6 +3628,9 @@ class TestNormalAct:
             result = _exhaust_gen(gen)
 
         assert isinstance(result, RedeemPayload)
+        # a failed check says nothing about what is left to redeem
+        assert result.nothing_to_redeem is None
+        assert result.tx_hash is None
 
     def test_normal_act_check_not_finished(self) -> None:
         """Should run _clean_redeem_info when check is not finished."""

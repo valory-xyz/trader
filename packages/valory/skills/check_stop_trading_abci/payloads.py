@@ -35,3 +35,4 @@ class CheckStopTradingPayload(BaseTxPayload):
     is_activity_target_met: Optional[bool] = None  # regime-aware rotation signal
     activity_target: Optional[int] = None
     activity_completed: Optional[int] = None
+    epoch_start: Optional[int] = None  # the staking checkpoint, None when unstaked

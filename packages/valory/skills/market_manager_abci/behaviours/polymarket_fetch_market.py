@@ -348,6 +348,15 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.prune_bets(self.synced_time)
 
     @staticmethod
+    def _gamma_price(raw: Any) -> Optional[float]:
+        """Get a Gamma decimal in [0, 1], `None` when missing or invalid."""
+        try:
+            value = float(raw)
+        except (ValueError, TypeError):
+            return None
+        return value if 0 <= value <= 1 else None
+
+    @staticmethod
     def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
         """Whether the raw bet would trip ``Bet._validate`` (null/mismatch).
 
@@ -481,7 +490,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for m in m_list
             if m.get("category_valid", False)
         )
-        self.context.logger.warning(
+        self.context.logger.info(
             f"Keyword category filter DISABLED — passing all {total_markets_pre_filter} markets "
             f"(if enabled, only {would_pass_filter}/{total_markets_pre_filter} would pass)."
         )
@@ -519,7 +528,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     # Parse JSON fields from response
                     outcomes = json.loads(market.get("outcomes", "[]"))
                     outcome_prices = json.loads(market.get("outcomePrices", "[]"))
-                    clob_token_ids = json.loads(market.get("clobTokenIds", "[]"))
+                    version = market.get("version")
+                    if version not in ("v1", "v2"):
+                        raise ValueError(f"Unsupported market version {version!r}")
+                    clob_token_ids = (
+                        market.get("positionIds")
+                        if version == "v2"
+                        else json.loads(market.get("clobTokenIds", "[]"))
+                    )
 
                     # Validate that we have the required data
                     if not outcomes or not outcome_prices or not clob_token_ids:
@@ -571,21 +587,17 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     if not market.get("question"):
                         raise ValueError("Missing question")
 
-                    # Parse spread from Gamma API (decimal, e.g. 0.02)
-                    raw_spread = market.get("spread")
-                    market_spread = None
-                    if raw_spread is not None:
-                        try:
-                            parsed = float(raw_spread)
-                            if 0 <= parsed <= 1:
-                                market_spread = parsed
-                        except (ValueError, TypeError):
-                            market_spread = None
+                    # Spread, best bid and best ask from Gamma (decimals, e.g. 0.02)
+                    market_spread, best_bid, best_ask = (
+                        self._gamma_price(market.get(key))
+                        for key in ("spread", "bestBid", "bestAsk")
+                    )
 
                     bet_dict = {
                         "id": market_id,
                         "title": market.get("question"),
                         "description": market.get("description"),
+                        "slug": market.get("slug"),
                         "category": category,
                         "condition_id": market.get("conditionId"),
                         # Polymarket v2 collateral is protocol-level (pUSD); the param
@@ -615,6 +627,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
                         "poly_tags": list(market.get("_poly_tags", []) or []),
+                        "poly_event_id": market.get("_poly_event_id"),
+                        "best_bid": best_bid,
+                        "best_ask": best_ask,
+                        "market_version": version,
                     }
 
                     # Debug: Log category for first few bets
@@ -694,6 +710,54 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         return all_bets
 
+    def _blacklist_closed_unfetched_bets(
+        self, fetched: List[Dict[str, Any]]
+    ) -> Generator[None, None, None]:
+        """Blacklist the stored bets the refresh did not return and Gamma reports closed.
+
+        The refresh only returns markets of events ending soon, so a market whose
+        event has ended is never updated again and would stay pickable once closed.
+
+        :param fetched: the raw bets the refresh returned.
+        :yield: None
+        """
+        fetched_ids = {raw_bet["id"] for raw_bet in fetched}
+        unfetched = {
+            bet.id: bet
+            for bet in self.bets
+            if bet.id not in fetched_ids and not bet.queue_status.is_expired()
+        }
+        if not unfetched:
+            return
+
+        response = yield from self.send_polymarket_connection_request(
+            {
+                "request_type": RequestType.CHECK_CLOSED_MARKETS.value,
+                "params": {"market_ids": list(unfetched)},
+            }
+        )
+        if not isinstance(response, dict) or response.get("error"):
+            self.context.logger.warning(
+                f"Closed check of the unfetched markets failed: {response}"
+            )
+            closed_ids: List[str] = []
+            unchecked = len(unfetched)
+        else:
+            closed_ids = response.get("closed_ids") or []
+            unchecked = len(response.get("unchecked_ids") or [])
+
+        total_unfetched = len(unfetched)
+        dropped = 0
+        for market_id in closed_ids:
+            bet = unfetched.pop(market_id, None)
+            if bet is not None:
+                bet.blacklist_forever()
+                dropped += 1
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=closed_unfetched_blacklist "
+            f"input={total_unfetched} dropped={dropped} unchecked={unchecked}"
+        )
+
     def _update_bets(self) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
         # Fetch markets from Polymarket
@@ -708,6 +772,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
 
         yield from self._process_chunk(bets_market_chunk)
+        if bets_market_chunk:
+            yield from self._blacklist_closed_unfetched_bets(bets_market_chunk)
         self._blacklist_expired_bets()
 
         # truncate the bets, otherwise logs get too big
@@ -946,9 +1012,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # This is to ensure that in case of subgraph or API failure,
         # agent doesn't lose existing investment data and end up placing duplicate bets.
         if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
-            self.context.logger.warning(
-                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
-            )
+            if any(a for amounts in existing_investments.values() for a in amounts):
+                self.context.logger.warning(
+                    f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+                )
             bet.investments = existing_investments
 
     def _update_all_bets_investments(
@@ -959,11 +1026,19 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         :param trades_by_condition_outcome: Grouped trades dictionary
         """
+        refreshed = held = 0
         for bet in self.bets:
             if self._should_skip_bet(bet):
                 continue
 
             self._update_single_bet_investments(bet, trades_by_condition_outcome)
+            refreshed += 1
+            held += bet.has_investments
+
+        self.context.logger.info(
+            f"Refreshed the investments of {refreshed} bets, "
+            f"{held} of them with recorded investments."
+        )
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""

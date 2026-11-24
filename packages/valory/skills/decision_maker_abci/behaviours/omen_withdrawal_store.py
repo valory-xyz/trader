@@ -33,8 +33,12 @@ import json
 import time
 from logging import Logger
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
+from packages.valory.skills.chatui_abci.models import (
+    WITHDRAWAL_STATE_COMPLETE,
+    WITHDRAWAL_STATE_ERRORED,
+)
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     WithdrawablePosition,
 )
@@ -57,7 +61,15 @@ class OmenWithdrawalStore:
     the sweep behaviour).
     """
 
-    def __init__(self, store_dir: Path, filename: str, logger: Logger) -> None:
+    def __init__(
+        self,
+        store_dir: Path,
+        filename: str,
+        logger: Logger,
+        on_finished: Optional[
+            Callable[[List[Dict[str, Any]], List[Dict[str, Any]], bool], None]
+        ] = None,
+    ) -> None:
         """Bind to a directory + filename + logger.
 
         :param store_dir: directory holding the chatui JSON store
@@ -65,10 +77,13 @@ class OmenWithdrawalStore:
         :param filename: store filename (typically
             ``CHATUI_PARAM_STORE``).
         :param logger: skill logger used for warn/error messages.
+        :param on_finished: called when the sweep ends with its fills, its
+            errors and whether it ended without errors.
         """
         self._store_dir = store_dir
         self._filename = filename
         self._logger = logger
+        self._on_finished = on_finished
 
     def path(self) -> Path:
         """Return the absolute path of the chatui JSON store."""
@@ -96,6 +111,13 @@ class OmenWithdrawalStore:
         store["withdrawal_state"] = state
         self.write(store)
         self._logger.info(f"omen withdrawal: state -> {state}")
+        finished = state in (WITHDRAWAL_STATE_COMPLETE, WITHDRAWAL_STATE_ERRORED)
+        if finished and self._on_finished is not None:
+            self._on_finished(
+                store.get("withdrawal_fills") or [],
+                store.get("withdrawal_errors") or [],
+                state == WITHDRAWAL_STATE_COMPLETE,
+            )
 
     def reset_session_records(self) -> None:
         """Clear ``withdrawal_fills`` and ``withdrawal_errors``.

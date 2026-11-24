@@ -86,6 +86,10 @@ from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.ranking import (
+    RankingReceiveBehaviour,
+    RankingRequestBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.redeem_router import (
     RedeemRouterBehaviour,
 )
@@ -109,6 +113,8 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
     abci_app_cls = DecisionMakerAbciApp
     behaviours: Set[Type[BaseBehaviour]] = {
         SamplingBehaviour,  # type: ignore
+        RankingRequestBehaviour,  # type: ignore
+        RankingReceiveBehaviour,  # type: ignore
         DecisionRequestBehaviour,  # type: ignore
         DecisionReceiveBehaviour,  # type: ignore
         BlacklistingBehaviour,  # type: ignore

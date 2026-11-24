@@ -184,9 +184,25 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
+    # Polymarket-only
+    poly_event_id: Optional[str] = None
+    # Polymarket-only best bid and ask of the first outcome at the last fetch
+    best_bid: Optional[float] = None
+    best_ask: Optional[float] = None
     # Polymarket-only long-form market description (resolution rules). Omen bets
     # leave this None. Sent to the mech via `to_request_context`.
     description: Optional[str] = None
+    # Polymarket-only market slug, which its public page URL is built from.
+    slug: Optional[str] = None
+    # Polymarket-only Gamma version
+    market_version: str = "v1"
+    # When the market entered a ranked list (0 if never; a negative value, left
+    # by an older release, counts as not ranked), and its score there (0 to 1)
+    ranked_at: int = 0
+    research_score: Optional[float] = None
+    # The staking epoch (its checkpoint timestamp) in which the agent declined
+    # the market or sold its whole position; 0 if never.
+    declined_epoch_start: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -256,13 +272,36 @@ class Bet:
         """
         return any(a for amounts in self.investments.values() for a in amounts)
 
+    def decline_in_epoch(self, epoch_start: Optional[int]) -> None:
+        """Hold the market back for the rest of the given staking epoch.
+
+        :param epoch_start: the epoch's checkpoint timestamp, ``None`` when unstaked.
+        """
+        if epoch_start:
+            self.declined_epoch_start = epoch_start
+
+    def is_declined_in_epoch(self, epoch_start: Optional[int]) -> bool:
+        """Whether the market was declined in the given epoch and still has no position.
+
+        :param epoch_start: the epoch's checkpoint timestamp, ``None`` when unstaked.
+        :return: whether the market is held back for that epoch.
+        """
+        return (
+            bool(epoch_start)
+            and self.declined_epoch_start == epoch_start
+            and self.invested_amount == 0
+        )
+
     @staticmethod
     def opposite_vote(vote: int) -> int:
         """Get the opposite vote."""
         return vote ^ 1
 
     def blacklist_forever(self) -> None:
-        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
+        """Blacklist a bet. Should only be used in cases where it is impossible to bet.
+
+        `update_market_info` lifts this for a bet stored with zero liquidity.
+        """
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
         self.queue_status = QueueStatus.EXPIRED
@@ -315,7 +354,7 @@ class Bet:
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
 
     def _check_usefulness(self) -> None:
-        """If the bet is deemed unhelpful, then blacklist it."""
+        """Blacklist a bet with no liquidity."""
         if self.scaledLiquidityMeasure == 0:
             self.blacklist_forever()
 
@@ -392,22 +431,37 @@ class Bet:
         return True
 
     def update_market_info(self, bet: "Bet") -> None:
-        """Update the bet's market information."""
-        if (
-            self.processed_timestamp == sys.maxsize
-            or bet.processed_timestamp == sys.maxsize
-        ):
-            self.blacklist_forever()  # copy over the changes from new bet object to the local store
+        """Update the bet's market information.
+
+        Revive a zero-liquidity blacklist once a refresh shows liquidity.
+
+        :param bet: the market as the latest refresh sees it.
+        """
+        if bet.processed_timestamp == sys.maxsize:
+            self.blacklist_forever()
             return
+
+        if self.processed_timestamp == sys.maxsize:
+            if self.scaledLiquidityMeasure != 0:
+                self.blacklist_forever()
+                return
+            self.outcomes = bet.outcomes
+            self.processed_timestamp = bet.processed_timestamp
+            self.queue_status = bet.queue_status
 
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
         self.neg_risk = bet.neg_risk
+        self.market_spread = bet.market_spread
         self.poly_tags = list(bet.poly_tags)
+        self.poly_event_id = bet.poly_event_id
+        self.best_bid = bet.best_bid
+        self.best_ask = bet.best_ask
         # Resolution rules can be edited on Polymarket's side after discovery;
         # refresh so already-queued bets carry the latest description.
         self.description = bet.description
+        self.slug = bet.slug
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""

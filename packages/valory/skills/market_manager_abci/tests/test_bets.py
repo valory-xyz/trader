@@ -383,6 +383,69 @@ class TestBetNegRisk:
         assert decoded.neg_risk is True
 
 
+class TestBetDeclinedInEpoch:
+    """Tests for holding a declined market back for the rest of a staking epoch."""
+
+    EPOCH = 1_700_000_000
+
+    @pytest.mark.parametrize("epoch_start", [None, 0])
+    def test_decline_without_epoch_is_not_recorded(self, epoch_start: Any) -> None:
+        """An unstaked service has no epoch to hold the market for."""
+        bet = _make_bet()
+        bet.decline_in_epoch(epoch_start)
+        assert bet.declined_epoch_start == 0
+
+    def test_decline_records_the_epoch(self) -> None:
+        """A decline holds the market for the epoch it happened in."""
+        bet = _make_bet()
+        bet.decline_in_epoch(self.EPOCH)
+        assert bet.is_declined_in_epoch(self.EPOCH) is True
+
+    @pytest.mark.parametrize(
+        "declined_epoch_start, epoch_start, invested, expected",
+        [
+            (EPOCH, EPOCH, 0, True),
+            (EPOCH, EPOCH + 86_400, 0, False),
+            (EPOCH, None, 0, False),
+            (0, 0, 0, False),
+            (0, None, 0, False),
+            (EPOCH, EPOCH, 10, False),
+        ],
+        ids=[
+            "same-epoch",
+            "next-epoch",
+            "unstaked",
+            "zero-never-matches",
+            "never-declined",
+            "holds-a-position",
+        ],
+    )
+    def test_is_declined_in_epoch(
+        self,
+        declined_epoch_start: int,
+        epoch_start: Any,
+        invested: int,
+        expected: bool,
+    ) -> None:
+        """Only a market declined in this very epoch, with no position, is held back."""
+        bet = _make_bet(
+            declined_epoch_start=declined_epoch_start,
+            investments={"Yes": [invested] if invested else [], "No": []},
+        )
+        assert bet.is_declined_in_epoch(epoch_start) is expected
+
+    def test_round_trips_and_defaults_for_older_files(self) -> None:
+        """The epoch survives multi_bets.json and an older file reads as never declined."""
+        original = _make_bet(declined_epoch_start=self.EPOCH)
+        decoded = json.loads(json.dumps(original, cls=BetsEncoder), cls=BetsDecoder)
+        assert decoded.declined_epoch_start == self.EPOCH
+
+        legacy = json.loads(json.dumps(original, cls=BetsEncoder))
+        del legacy["declined_epoch_start"]
+        decoded = json.loads(json.dumps(legacy), cls=BetsDecoder)
+        assert decoded.declined_epoch_start == 0
+
+
 class TestBetLt:
     """Tests for Bet.__lt__."""
 
@@ -712,6 +775,13 @@ class TestBetUpdateMarketInfo:
         bet.update_market_info(other)
         assert bet.neg_risk is True
 
+    def test_update_market_info_refreshes_the_book(self) -> None:
+        """update_market_info copies the spread, best bid and best ask of the latest fetch."""
+        bet = _make_bet(market_spread=0.4, best_bid=0.3, best_ask=0.7)
+        other = _make_bet(market_spread=0.02, best_bid=0.49, best_ask=0.51)
+        bet.update_market_info(other)
+        assert (bet.market_spread, bet.best_bid, bet.best_ask) == (0.02, 0.49, 0.51)
+
     def test_update_market_info_copies_poly_tags(self) -> None:
         """update_market_info carries poly_tags from the incoming bet.
 
@@ -736,6 +806,83 @@ class TestBetUpdateMarketInfo:
         incoming = _make_bet(id="b1", description="new resolution rules")
         existing.update_market_info(incoming)
         assert existing.description == "new resolution rules"
+
+    def test_update_market_info_refreshes_slug(self) -> None:
+        """update_market_info gives already-queued bets the slug of the latest fetch."""
+        existing = _make_bet(id="b1")
+        incoming = _make_bet(id="b1", slug="will-it-rain")
+        existing.update_market_info(incoming)
+        assert existing.slug == "will-it-rain"
+
+    def test_market_first_seen_empty_returns_once_it_has_liquidity(self) -> None:
+        """A market blacklisted for no liquidity returns as a fresh bet."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+        assert bet.queue_status == QueueStatus.EXPIRED
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.FRESH
+        assert bet.processed_timestamp == 0
+        assert bet.outcomes == ["Yes", "No"]
+        assert bet.scaledLiquidityMeasure == 5000.0
+
+    def test_market_that_stays_empty_stays_blacklisted(self) -> None:
+        """A refresh that still shows no liquidity leaves the blacklist in place."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.processed_timestamp == sys.maxsize
+        assert bet.outcomes is None
+
+    def test_empty_market_read_from_the_store_returns(self) -> None:
+        """A row an earlier version blacklisted for no liquidity also returns."""
+        row = json.dumps([_make_bet(scaledLiquidityMeasure=0)], cls=BetsEncoder)
+        bet = json.loads(row, cls=BetsDecoder)[0]
+        assert bet.queue_status == QueueStatus.EXPIRED
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.FRESH
+        assert bet.outcomes == ["Yes", "No"]
+
+    def test_live_market_that_drops_to_zero_stays_blacklisted(self) -> None:
+        """A market seen with liquidity stays blacklisted after a drop to zero."""
+        bet = _make_bet(scaledLiquidityMeasure=5.0, investments={"Yes": [7], "No": []})
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=0))
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.scaledLiquidityMeasure == 5.0
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.processed_timestamp == sys.maxsize
+        assert bet.outcomes is None
+        assert bet.scaledLiquidityMeasure == 5.0
+        assert bet.investments == {"Yes": [7], "No": []}
+
+    def test_blacklist_for_another_reason_is_kept(self) -> None:
+        """A market blacklisted while it had liquidity stays blacklisted."""
+        bet = _make_bet(scaledLiquidityMeasure=5.0)
+        bet.blacklist_forever()
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.outcomes is None
+        assert bet.scaledLiquidityMeasure == 5.0
+
+    def test_empty_market_stays_blacklisted_once_closed(self) -> None:
+        """A blacklisted refresh, such as a closed market, does not lift the blacklist."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+        closed = _make_bet(outcomes=None, scaledLiquidityMeasure=5000.0)
+
+        bet.update_market_info(closed)
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.scaledLiquidityMeasure == 0
 
 
 class TestBetSetProcessedSellCheck:
@@ -1045,6 +1192,15 @@ class TestBetsDecoder:
         decoded = json.loads(encoded, cls=BetsDecoder)
         assert isinstance(decoded, Bet)
         assert decoded.description == "resolution rules here"
+
+    @pytest.mark.parametrize("stored", [{}, {"market_version": "v2"}])
+    def test_market_version_survives_decoding(self, stored: Dict[str, str]) -> None:
+        """A bet stored without a version loads as v1; a v2 one stays v2."""
+        data = json.loads(json.dumps(_make_bet(), cls=BetsEncoder))
+        data.pop("market_version", None)
+        decoded = json.loads(json.dumps({**data, **stored}), cls=BetsDecoder)
+        expected = stored.get("market_version", "v1")
+        assert getattr(decoded, "market_version", None) == expected
 
 
 # ===========================================================================

@@ -21,14 +21,22 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    SamplingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.market_manager_abci.bets import QueueStatus
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
+
+SYNCED_TS = 1700000000
+SIMULATED_BENCHMARK_TS = 123
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,6 +64,7 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     context.logger = MagicMock()
     context.benchmark_tool.measure.return_value.__enter__ = MagicMock()
     context.benchmark_tool.measure.return_value.__exit__ = MagicMock()
+    context.state.orderbook_fetch_failed = False
     behaviour.__dict__["_context"] = context
 
     # shared_state
@@ -96,6 +105,219 @@ class TestBlacklistBlacklist:
             behaviour._blacklist()
 
         assert mock_bet.queue_status == expected_next
+
+    @pytest.mark.parametrize(
+        "benchmarking, expected_timestamp",
+        ((False, SYNCED_TS), (True, SIMULATED_BENCHMARK_TS)),
+        ids=("live", "benchmarking"),
+    )
+    def test_blacklist_sets_processed_timestamp(
+        self, benchmarking: bool, expected_timestamp: int
+    ) -> None:
+        """_blacklist should stamp the synced time, except in benchmarking mode."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+
+        other_bet = MagicMock(spec=Bet)
+        other_bet.queue_status = QueueStatus.REPROCESSED
+        other_bet.processed_timestamp = 0
+        sampled_bet = MagicMock(spec=Bet)
+        sampled_bet.queue_status = QueueStatus.REPROCESSED
+        sampled_bet.processed_timestamp = SIMULATED_BENCHMARK_TS
+        behaviour.bets = [other_bet, sampled_bet]
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            mock_sd.return_value = MagicMock(sampled_bet_index=1)
+            behaviour._blacklist()
+
+        assert sampled_bet.processed_timestamp == expected_timestamp
+        assert sampled_bet.queue_status == QueueStatus.REPROCESSED
+        assert other_bet.processed_timestamp == 0
+        assert other_bet.queue_status == QueueStatus.REPROCESSED
+
+    def test_unreadable_order_book_is_not_stamped(self) -> None:
+        """A decision without a readable book leaves the market out of the cooldown."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        state = behaviour.__dict__["_context"].state
+        state.orderbook_fetch_failed = True
+        sampled_bet = MagicMock(spec=Bet)
+        sampled_bet.queue_status = QueueStatus.TO_PROCESS
+        sampled_bet.processed_timestamp = 0
+        behaviour.bets = [sampled_bet]
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            mock_sd.return_value = MagicMock(sampled_bet_index=0)
+            behaviour._blacklist()
+            assert sampled_bet.processed_timestamp == 0
+            assert sampled_bet.queue_status == QueueStatus.TO_PROCESS.next_status()
+            assert state.orderbook_fetch_failed is False
+            # the flag covers one decision only
+            behaviour._blacklist()
+            assert sampled_bet.processed_timestamp == SYNCED_TS
+
+    def test_declines_rotate_through_reprocessed_bets(self) -> None:
+        """Repeated declines with the real sampler visit every REPROCESSED bet."""
+        bets = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=1800000000,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=liquidity,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i, liquidity in enumerate((900.0, 500.0, 300.0, 200.0, 100.0))
+        ]
+        sampler = object.__new__(SamplingBehaviour)
+        sampler.bets = bets
+        blacklister = _make_behaviour()
+        blacklister.__dict__["_context"].benchmarking_mode.enabled = False
+        blacklister.bets = bets
+
+        sampled_ids = []
+        now = SYNCED_TS
+        for _ in range(8):
+            idx = sampler._sampled_bet_idx(sampler.bets)
+            sampled_ids.append(bets[idx].id)
+            with (
+                patch.object(
+                    BlacklistingBehaviour,
+                    "synchronized_data",
+                    new_callable=PropertyMock,
+                    return_value=MagicMock(sampled_bet_index=idx),
+                ),
+                patch.object(
+                    BlacklistingBehaviour,
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ),
+            ):
+                blacklister._blacklist()
+            now += 96
+
+        assert sampled_ids == ["m0", "m1", "m2", "m3", "m4", "m0", "m1", "m2"]
+
+
+class TestBlacklistDeclineInEpoch:
+    """A no-trade decision holds the market for the epoch; a mech error does not."""
+
+    EPOCH = 1_699_990_000
+
+    @staticmethod
+    def _bet() -> Bet:
+        """Return a real, unheld bet."""
+        return Bet(
+            id="bet",
+            market="omen_subgraph",
+            title="Will it rain?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=SYNCED_TS + 86_400,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[10, 20],
+            outcomeTokenMarginalPrices=[0.4, 0.6],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=5.0,
+            queue_status=QueueStatus.TO_PROCESS,
+        )
+
+    @staticmethod
+    def _run_blacklist(
+        behaviour: BlacklistingBehaviour, synced_data: MagicMock
+    ) -> None:
+        """Run `_blacklist` with the given synced data at the synced time."""
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=synced_data,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            behaviour._blacklist()
+
+    @pytest.mark.parametrize(
+        "decision_ts, vote, is_profitable, epoch_start, benchmarking, expected",
+        [
+            (SYNCED_TS, None, False, EPOCH, False, EPOCH),
+            (SYNCED_TS, 1, False, EPOCH, False, EPOCH),
+            (SYNCED_TS, None, True, EPOCH, False, EPOCH),
+            (0, None, None, EPOCH, False, 0),
+            (SYNCED_TS, 1, True, EPOCH, False, 0),
+            (SYNCED_TS, None, False, None, False, 0),
+            (SYNCED_TS, None, False, EPOCH, True, 0),
+        ],
+        ids=[
+            "tie-or-low-edge",
+            "unprofitable",
+            "no-vote",
+            "mech-error",
+            "failed-placement",
+            "unstaked",
+            "benchmarking",
+        ],
+    )
+    def test_blacklist_marks_declines_only(  # pylint: disable=too-many-arguments
+        self,
+        decision_ts: int,
+        vote: object,
+        is_profitable: object,
+        epoch_start: object,
+        benchmarking: bool,
+        expected: int,
+    ) -> None:
+        """Only a read mech answer that led to no trade records the epoch."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+        bet = self._bet()
+        behaviour.bets = [bet]
+        synced_data = MagicMock(
+            sampled_bet_index=0,
+            decision_receive_timestamp=decision_ts,
+            vote=vote,
+            is_profitable=is_profitable,
+            epoch_start=epoch_start,
+        )
+
+        self._run_blacklist(behaviour, synced_data)
+
+        assert bet.declined_epoch_start == expected
 
 
 class TestBlacklistingAsyncAct:
@@ -284,6 +506,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
@@ -357,6 +580,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = HandleFailedTxRound.auto_round_id()
                 sd.mech_tool = "tool1"
@@ -425,6 +649,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"

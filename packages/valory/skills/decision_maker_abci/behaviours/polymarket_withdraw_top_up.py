@@ -25,6 +25,7 @@ from eth_abi import encode
 from eth_utils import keccak, to_checksum_address  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.connection import V2_BALANCE_KEY
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
@@ -50,13 +51,14 @@ SAFE_BATCH_TRANSFER_SELECTOR = keccak(
 
 
 class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
-    """Moves all sellable CTF positions from the Safe to the DepositWallet.
+    """Moves all sellable positions from the Safe to the DepositWallet.
 
     Runs once before the withdrawal sell-loop. Fetches the unredeemable
     positions, resolves the DepositWallet, and builds a single Safe multisend
-    ``safeBatchTransferFrom`` moving every sellable CTF position to the DW so
-    the loop's DW-funded FAK sells have the shares to sell. When nothing is
-    sellable the round short-circuits to ``WITHDRAWAL_DONE``.
+    with one ``safeBatchTransferFrom`` per ledger (V1 on the CTF, V2 on
+    PositionManager) moving every sellable position to the DW so the loop's
+    DW-funded FAK sells have the shares to sell. When nothing is sellable the
+    round short-circuits to ``WITHDRAWAL_DONE``.
     """
 
     matching_round = PolymarketWithdrawTopUpRound
@@ -70,15 +72,15 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
 
     def _fetch_sellable(
         self,
-    ) -> Generator[None, None, Optional[List[Tuple[int, int]]]]:
-        """Fetch unredeemable positions and return ``(token_id, amount)`` pairs.
+    ) -> Generator[None, None, Optional[List[Tuple[str, int, int]]]]:
+        """Fetch unredeemable positions and return ``(ledger, token_id, amount)``.
 
         :yield: framework yields between dispatch and the connection response.
-        :return: list of ``(token_id_int, amount_base_units)`` for sellable
-            positions, or ``None`` on a fetch error.
+        :return: list of ``(ledger, token_id_int, amount_base_units)`` for sellable
+            positions, or ``None`` on error.
         """
         # Query the Safe (the connection default): this runs BEFORE the top-up
-        # moves anything, so the sellable CTF is still held by the Safe. (The
+        # moves anything, so the sellable positions are still held by the Safe. (The
         # round is only re-entered on a pre-PREPARE_TX failure — never after the
         # Safe→DW batch settles — so the holder is always the Safe here. The
         # post-move DW query lives in the sell-loop's _request_fetch_positions.)
@@ -88,16 +90,22 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         if response is None or isinstance(response, dict):
             return None
 
-        sellable: List[Tuple[int, int]] = []
+        sellable: List[Tuple[str, int, int]] = []
         for position in response:
             asset = position.get("asset")
             try:
                 size = float(position.get("size") or 0.0)
             except (TypeError, ValueError):
                 continue
+            amount = int(round(size * CTF_DECIMAL_FACTOR))
+            ledger = self.params.polymarket_ctf_address
+            if V2_BALANCE_KEY in position:  # the exact balance; sizes are rounded
+                ledger = self.params.polymarket_position_manager_address
+                amount = position[V2_BALANCE_KEY]
+                size = amount / CTF_DECIMAL_FACTOR
             if not asset or size <= DUST_EPSILON:
                 continue
-            sellable.append((int(asset), int(round(size * CTF_DECIMAL_FACTOR))))
+            sellable.append((ledger, int(asset), amount))
         return sellable
 
     def _build_safe_batch_transfer_data(
@@ -107,11 +115,11 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         token_ids: List[int],
         amounts: List[int],
     ) -> bytes:
-        """Encode CTF ``safeBatchTransferFrom(safe, dw, ids, amounts, "")``.
+        """Encode ERC1155 ``safeBatchTransferFrom(safe, dw, ids, amounts, "")``.
 
-        :param safe_address: the Safe (current CTF holder / from).
+        :param safe_address: the Safe (current position holder / from).
         :param dw_address: the DepositWallet (to).
-        :param token_ids: CTF token ids to move.
+        :param token_ids: position token ids to move.
         :param amounts: parallel amounts in base units.
         :return: the encoded calldata.
         """
@@ -128,7 +136,7 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         return SAFE_BATCH_TRANSFER_SELECTOR + encoded_args
 
     def _prepare_withdraw_top_up(self) -> Generator[None, None, None]:
-        """Resolve the DW and build the CTF batch-transfer multisend.
+        """Resolve the DW and build the per-ledger batch-transfer multisend.
 
         Sets ``self.payload`` carrying the FSM event to emit
         (WITHDRAWAL_DONE / PREPARE_TX / NONE).
@@ -153,22 +161,27 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self._set_payload(Event.WITHDRAWAL_DONE, None)
             return
 
-        token_ids = [t for t, _ in sellable]
-        amounts = [a for _, a in sellable]
-        self.multisend_batches.append(
-            MultisendBatch(
-                to=self.params.polymarket_ctf_address,
-                data=HexBytes(
-                    self._build_safe_batch_transfer_data(
-                        self.synchronized_data.safe_contract_address,
-                        dw_address,
-                        token_ids,
-                        amounts,
-                    )
-                ),
-                value=0,
+        for ledger in (
+            self.params.polymarket_ctf_address,
+            self.params.polymarket_position_manager_address,
+        ):
+            moves = [(t, a) for to, t, a in sellable if to == ledger]
+            if not moves:
+                continue
+            self.multisend_batches.append(
+                MultisendBatch(
+                    to=ledger,
+                    data=HexBytes(
+                        self._build_safe_batch_transfer_data(
+                            self.synchronized_data.safe_contract_address,
+                            dw_address,
+                            [t for t, _ in moves],
+                            [a for _, a in moves],
+                        )
+                    ),
+                    value=0,
+                )
             )
-        )
         if not (yield from self._build_multisend_data()):
             self.context.logger.error("Failed to build withdrawal top-up multisend.")
             self._set_payload(Event.NONE, None)

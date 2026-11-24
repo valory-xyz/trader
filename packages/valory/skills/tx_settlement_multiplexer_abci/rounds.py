@@ -34,6 +34,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
 from packages.valory.skills.decision_maker_abci.states.base import SynchronizedData
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
@@ -95,6 +96,7 @@ class Event(Enum):
     TOP_UP_DONE = "top_up_done"
     WITHDRAW_TOP_UP_DONE = "withdraw_top_up_done"
     OFFCHAIN_MECH_DEPOSIT_SETTLED = "offchain_mech_deposit_settled"
+    AGENT_TOPUP_DONE = "agent_topup_done"
 
 
 class PreTxSettlementRound(VotingRound):
@@ -148,6 +150,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             PolymarketWrapCollateralRound.auto_round_id(): Event.WRAP_COLLATERAL_DONE,
             PolymarketTopUpRound.auto_round_id(): Event.TOP_UP_DONE,
             PolymarketWithdrawTopUpRound.auto_round_id(): Event.WITHDRAW_TOP_UP_DONE,
+            AgentTopUpRound.auto_round_id(): Event.AGENT_TOPUP_DONE,
             # Settled off-chain auto-deposit: re-enter MechRequestRound
             # for ``_retry_pending``, not forward to MechResponseRound.
             OFFCHAIN_DEPOSIT_TX_SUBMITTER: Event.OFFCHAIN_MECH_DEPOSIT_SETTLED,
@@ -243,6 +246,10 @@ class FinishedPolymarketWithdrawTopUpTxRound(DegenerateRound):
     """Round that represents that a Safe→DepositWallet CTF withdrawal top-up has settled."""
 
 
+class FinishedAgentTopUpTxRound(DegenerateRound):
+    """Round that represents that an Agent Safe to Agent Signer top-up tx has settled."""
+
+
 class FinishedOffchainMechDepositSettledRound(DegenerateRound):
     """Round that represents an off-chain mech auto-deposit has settled.
 
@@ -279,8 +286,9 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - top up done: 12.
             - withdraw top up done: 13.
             - offchain mech deposit settled: 15.
+            - agent topup done: 16.
             - round timeout: 1.
-            - unrecognized: 16.
+            - unrecognized: 17.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
@@ -295,9 +303,10 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         13. FinishedPolymarketWithdrawTopUpTxRound
         14. FinishedStakingTxRound
         15. FinishedOffchainMechDepositSettledRound
-        16. FailedMultiplexerRound
+        16. FinishedAgentTopUpTxRound
+        17. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedOffchainMechDepositSettledRound, FinishedOmenWithdrawTxRound, FinishedPolymarketSwapTxRound, FinishedPolymarketTopUpTxRound, FinishedPolymarketWithdrawTopUpTxRound, FinishedPolymarketWrapCollateralTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedAgentTopUpTxRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedOffchainMechDepositSettledRound, FinishedOmenWithdrawTxRound, FinishedPolymarketSwapTxRound, FinishedPolymarketTopUpTxRound, FinishedPolymarketWithdrawTopUpTxRound, FinishedPolymarketWrapCollateralTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0
@@ -326,6 +335,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.TOP_UP_DONE: FinishedPolymarketTopUpTxRound,
             Event.WITHDRAW_TOP_UP_DONE: FinishedPolymarketWithdrawTopUpTxRound,
             Event.OFFCHAIN_MECH_DEPOSIT_SETTLED: FinishedOffchainMechDepositSettledRound,
+            Event.AGENT_TOPUP_DONE: FinishedAgentTopUpTxRound,
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
@@ -343,6 +353,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedPolymarketWithdrawTopUpTxRound: {},
         FinishedStakingTxRound: {},
         FinishedOffchainMechDepositSettledRound: {},
+        FinishedAgentTopUpTxRound: {},
         FailedMultiplexerRound: {},
     }
     event_to_timeout: Dict[Event, float] = {
@@ -363,6 +374,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedSubscriptionTxRound,
         FinishedSetApprovalTxRound,
         FinishedOffchainMechDepositSettledRound,
+        FinishedAgentTopUpTxRound,
         FailedMultiplexerRound,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
@@ -385,4 +397,5 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedSubscriptionTxRound: set(),
         FinishedSetApprovalTxRound: set(),
         FinishedOffchainMechDepositSettledRound: set(),
+        FinishedAgentTopUpTxRound: set(),
     }

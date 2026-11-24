@@ -1,4 +1,5 @@
 alphabet_in:
+- AGENT_TOPUP_DONE
 - BET_PLACEMENT_DONE
 - CHECKS_PASSED
 - MECH_REQUESTING_DONE
@@ -21,6 +22,7 @@ default_start_state: PreTxSettlementRound
 final_states:
 - ChecksPassedRound
 - FailedMultiplexerRound
+- FinishedAgentTopUpTxRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
 - FinishedOffchainMechDepositSettledRound
@@ -41,6 +43,7 @@ start_states:
 states:
 - ChecksPassedRound
 - FailedMultiplexerRound
+- FinishedAgentTopUpTxRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
 - FinishedOffchainMechDepositSettledRound
@@ -57,6 +60,7 @@ states:
 - PostTxSettlementRound
 - PreTxSettlementRound
 transition_func:
+    (PostTxSettlementRound, AGENT_TOPUP_DONE): FinishedAgentTopUpTxRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): FinishedMechRequestTxRound
     (PostTxSettlementRound, OFFCHAIN_MECH_DEPOSIT_SETTLED): FinishedOffchainMechDepositSettledRound

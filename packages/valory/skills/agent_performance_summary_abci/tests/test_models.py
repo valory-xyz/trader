@@ -846,7 +846,7 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
-                mech_analytics_url="",
+                mech_analytics_url="https://analytics.test",
                 use_mech_analytics=False,
                 olas_predict_leaderboard_url=None,
             )
@@ -987,7 +987,7 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
-                mech_analytics_url="",
+                mech_analytics_url="https://analytics.test",
                 use_mech_analytics=False,
                 olas_predict_leaderboard_url=None,
             )
@@ -1941,6 +1941,7 @@ ACTIVITY_GOAL_BLOCK: Dict[str, Any] = {
     "period_start": 1_791_331_200,
     "last_met_at": None,
     "updated_at": 1_791_363_317,
+    "no_markets_left": False,
 }
 
 
@@ -2152,8 +2153,13 @@ class TestActivityGoalPersistence:
 
     @pytest.mark.parametrize(
         "overrides",
-        [{"is_met": True}, {"progress": -1}, {"target": True}],
-        ids=["met_below_target", "negative_progress", "bool_target"],
+        [
+            {"is_met": True},
+            {"progress": -1},
+            {"target": True},
+            {"no_markets_left": 1},
+        ],
+        ids=["met_below_target", "negative_progress", "bool_target", "int_no_markets"],
     )
     def test_activity_goal_refuses_invalid_construction(
         self, overrides: Dict[str, Any]
@@ -2356,3 +2362,23 @@ class TestSubgraphSubclasses:
     def test_is_subclass_of_api_specs(self, cls: type) -> None:
         """Each subgraph class is also a subclass of ApiSpecs."""
         assert issubclass(cls, ApiSpecs)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_polygon_missing_analytics_is_rejected_at_startup(
+    tmp_path: Path, enabled: bool
+) -> None:
+    """Required Polygon analytics cannot be bypassed by disabling the Gnosis flag."""
+    kwargs = {
+        **DEFAULT_APS_KWARGS,
+        "is_running_on_polymarket": True,
+        "use_mech_analytics": enabled,
+        "mech_analytics_url": "",
+    }
+    with (
+        patch.object(BaseParams, "__init__", return_value=None),
+        pytest.raises(ValueError, match="MECH_ANALYTICS_URL"),
+    ):
+        AgentPerformanceSummaryParams(
+            skill_context=MagicMock(), store_path=str(tmp_path), **kwargs
+        )

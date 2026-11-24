@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigmdbbctpv2ajzfwpyuhbul2ppu3bjffexyewg42lrnejhsl7hqfe
+agent: valory/trader:0.1.0:bafybeiblazqfz7vxuq4zxbsfprymzdtjgrn7iuq3ou2ivsgrkax35bts6a
 number_of_agents: 1
 deployment:
   agent:
@@ -84,7 +84,7 @@ models:
       opening_margin: ${OPENING_MARGIN:int:300}
       expired_bet_retention: ${EXPIRED_BET_RETENTION:int:2592000}
       languages: ${LANGUAGES:list:["en_US"]}
-      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
+      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${ABT:int:5}
       abt_error_mult: ${ABT_ERROR_MULT:int:5}
       the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
@@ -94,6 +94,8 @@ models:
       mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+      declined_market_cooldown: ${DECLINED_MARKET_COOLDOWN:int:3600}
+      orderbook_unavailable_threshold: ${ORDERBOOK_UNAVAILABLE_THRESHOLD:int:5}
       trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:false}
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
@@ -134,7 +136,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       withdrawal_round_timeout: ${WITHDRAWAL_ROUND_TIMEOUT:float:1800.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-      file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe":["kelly_criterion"],"bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim":["fixed_bet"]}}
+      file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeicilvsozfawzdcsmtcwxiutr33dtixeebhawn7nolxmm5vj74z5h4":["kelly_criterion"],"bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim":["fixed_bet"]}}
       strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
@@ -179,6 +181,8 @@ models:
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
       exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
+      enable_market_ranking: ${ENABLE_MARKET_RANKING:bool:false}
+      ranking_min_score: ${RANKING_MIN_SCORE:float:0.5}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
       delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"native":10000000000000000}}
       marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
@@ -373,7 +377,7 @@ type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:127.0.0.1}
   port: ${HTTP_SERVER_PORT:int:8716}
-  timeout: ${HTTP_SERVER_TIMEOUT:float:30.0}
+  timeout: ${HTTP_SERVER_TIMEOUT:float:65.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
 public_id: valory/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq

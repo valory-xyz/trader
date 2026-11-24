@@ -22,7 +22,7 @@
 import json
 import os
 from abc import ABC
-from typing import Any, Generator, Optional, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
@@ -33,15 +33,33 @@ from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    DW_APPROVALS_VERSION,
+)
 
 DEPOSIT_WALLET_STORE = "deposit_wallet.json"
+# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
+# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
+# only non-terminal value; everything else means we can stop polling.
+ORDER_STATUS_MATCHED = "ORDER_STATUS_MATCHED"
+ORDER_STATUS_CANCELED = "ORDER_STATUS_CANCELED"
+ORDER_STATUS_INVALID = "ORDER_STATUS_INVALID"
+ORDER_STATUS_CANCELED_MARKET_RESOLVED = "ORDER_STATUS_CANCELED_MARKET_RESOLVED"
+GET_ORDER_TERMINAL_STATUSES = frozenset(
+    {
+        ORDER_STATUS_MATCHED,
+        ORDER_STATUS_CANCELED,
+        ORDER_STATUS_INVALID,
+        ORDER_STATUS_CANCELED_MARKET_RESOLVED,
+    }
+)
 
 
 class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
     """Shared DepositWallet state + relayer-proxy helpers for the CLOB v2 flows.
 
     The DepositWallet is provisioned (deploy + trading approvals) once by
-    ``PolymarketSetApprovalBehaviour``; the top-up / withdrawal flows only
+    ``PolymarketSetApprovalBehaviour``; the top-up, withdrawal and redeem flows only
     resolve the recorded DW and relay calls through the proxy. The SRR request
     wrapper and the ``deposit_wallet.json`` read/write/invalidate/resolve
     helpers are shared here to avoid duplication across those behaviours.
@@ -109,7 +127,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         """
         try:
             token_map = self.sampled_bet.outcome_token_ids or {}
-        except Exception:  # noqa: BLE001 — best-effort token id retrieval
+        except Exception:  # noqa: BLE001 - best-effort token id retrieval
             self.context.logger.warning("Failed to retrieve outcome token IDs.")
             return []
         ids = []
@@ -120,6 +138,23 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                 self.context.logger.warning(f"Invalid token ID '{tid}' skipped.")
                 continue
         return ids
+
+    def _asset_token_ids(self, positions: List[Dict[str, Any]]) -> List[int]:
+        """Integer token ids of the positions a sweep should reclaim.
+
+        :param positions: position records keyed by v1 names.
+        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
+        """
+        token_ids: List[int] = []
+        for p in positions:
+            try:
+                token_ids.append(int(p["asset"]))
+            except (KeyError, TypeError, ValueError):
+                self.context.logger.warning(
+                    f"Invalid token ID {p.get('asset')!r} of condition "
+                    f"{p.get('conditionId')!r} skipped."
+                )
+        return token_ids
 
     def _read_deposit_wallet_file(self) -> Optional[dict]:
         """Read the persisted DepositWallet state, if any.
@@ -135,20 +170,26 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _write_deposit_wallet_file(
         self, dw_address: str, dw_owner: Optional[str], approvals_done: bool
-    ) -> None:
+    ) -> bool:
         """Persist the DepositWallet state for the setup gate / self-heal.
+
+        A confirmed record also carries ``approvals_version``, the version of
+        the DepositWallet trading-approval set that was mined.
 
         :param dw_address: the resolved DepositWallet address.
         :param dw_owner: the DW owner (current agent EOA).
         :param approvals_done: whether the DW trading approvals have been
             confirmed mined; only ``True`` once the relayer tx has settled.
+        :return: ``True`` if the record was persisted, ``False`` on error.
         """
         path = self.params.store_path / DEPOSIT_WALLET_STORE
-        data = {
+        data: Dict[str, Any] = {
             "dw_address": dw_address,
             "dw_owner": dw_owner,
             "approvals_done": approvals_done,
         }
+        if approvals_done:
+            data["approvals_version"] = DW_APPROVALS_VERSION
         tmp = f"{path}.tmp"
         try:
             with open(tmp, "w") as f:
@@ -156,6 +197,8 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             os.replace(tmp, path)
         except OSError as e:
             self.context.logger.error(f"Failed to write {DEPOSIT_WALLET_STORE}: {e}")
+            return False
+        return True
 
     def _invalidate_deposit_wallet_file(self) -> None:
         """Remove the persisted DepositWallet state to force a fresh deploy.
@@ -175,7 +218,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Resolve the DepositWallet address for the agent EOA.
 
         Reads the persisted ``deposit_wallet.json`` (owner-checked) written by
-        the setup round — the single, durable source of truth for the DW. The
+        the setup round - the single, durable source of truth for the DW. The
         address is NOT threaded through synchronized data: Polystrat is a
         single-agent (sovereign) deployment, so the local store is authoritative
         and avoids passing the funder through every round's payload. Provisioning
@@ -194,3 +237,94 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         ):
             return persisted["dw_address"]
         return None
+
+    @staticmethod
+    def _extract_response_or_error(
+        response: Any,
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """Coerce a connection-layer response into ``(payload, error)``.
+
+        The connection returns ``{"error": "..."}`` on failure (preserving
+        any extra keys like ``signed_order_json``) and a normal dict on
+        success. ``None`` means dispatch / timeout failure.
+
+        :param response: raw response from the polymarket connection layer.
+        :return: a normalized ``(payload_dict_or_none, error_or_none)`` tuple.
+        """
+        if response is None:
+            return None, "no response from connection"
+        if isinstance(response, dict) and response.get("error"):
+            return response, str(response["error"])
+        return response, None
+
+    def _request_get_order(
+        self,
+        order_id: str,
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
+        """Issue a single GET_ORDER lookup against the connection.
+
+        :param order_id: CLOB order id to look up.
+        :yield: framework yields between dispatch and response.
+        :return: ``(order_payload_or_none, error_or_none)``. The payload is
+            the raw ``client.get_order`` response (may be a falsy/None body
+            if the data API hasn't indexed the order yet).
+        """
+        payload = {
+            "request_type": RequestType.GET_ORDER.value,
+            "params": {"order_id": order_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        return self._extract_response_or_error(response)
+
+    def _poll_order_until_terminal_cooperative(
+        self,
+        order_id: str,
+        backoffs_s: Tuple[float, ...],
+        log_prefix: str,
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
+        """Poll ``get_order`` until the order reaches a terminal status.
+
+        Uses ``yield from self.sleep(...)`` between polls so the connection's
+        worker thread is free to serve other consumers during the wait.
+
+        Three return shapes distinguish the outcome:
+
+        - ``(terminal_payload, None)`` - a terminal status was reached.
+        - ``(None, None)`` - the backoffs ran out before a terminal status.
+        - ``(None, error_string)`` - every lookup errored.
+
+        :param order_id: CLOB order id to look up.
+        :param backoffs_s: seconds to sleep before each lookup.
+        :param log_prefix: prefix naming the caller's flow in log lines.
+        :yield: framework yields between cooperative sleeps and dispatch.
+        :return: tuple of ``(terminal_payload_or_none, error_string_or_none)``.
+        """
+        error_count = 0
+        last_error: Optional[str] = None
+        for backoff_s in backoffs_s:
+            yield from self.sleep(backoff_s)
+            order, error = yield from self._request_get_order(order_id)
+            if error is not None:
+                error_count += 1
+                last_error = error
+                self.context.logger.warning(
+                    f"{log_prefix}get_order failed for {order_id}: {error}"
+                )
+                continue
+            # The SDK can return ``None`` shortly after ``post_order`` -
+            # the data API hasn't indexed the new order yet. Keep polling
+            # rather than crash on ``.get()``.
+            if not order:
+                continue
+            status = order.get("status") or ""
+            if status in GET_ORDER_TERMINAL_STATUSES:
+                return order, None
+        # exhausted
+        if error_count == len(backoffs_s):
+            return None, (
+                f"all {error_count} poll attempts errored (last: {last_error})"
+            )
+        self.context.logger.warning(
+            f"{log_prefix}order {order_id} still delayed after poll exhausted"
+        )
+        return None, None

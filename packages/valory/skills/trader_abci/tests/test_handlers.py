@@ -48,6 +48,19 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_topup_abci.tests.helpers import (
+    AGENT,
+    ETHER,
+    NATIVE,
+    SAFE,
+    funds_status,
+    native,
+    real_topup_rule,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_REFILLING_KEY,
+    TOPUP_SUCCEEDED_KEY,
+)
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -61,6 +74,9 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     GetHandlerTestCase,
+)
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
@@ -181,6 +197,27 @@ class TestHttpHandler:
             HttpMethod.GET.value,
         )
         assert handler == self.handler._handle_get_static_file
+
+    def test_chat_route_resolves_before_static_catch_all(self) -> None:
+        """``POST /api/v1/chat`` reaches the chat, not the static-file catch-all."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/chat", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_chat
+
+    def test_chat_route_is_anchored(self) -> None:
+        """A path merely starting with ``chat`` does not reach the chat."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/chatXYZ", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_bad_request
+
+    def test_configure_strategies_route_is_unchanged(self) -> None:
+        """The old chat route still answers through the prompt handler."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/configure_strategies", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_chatui_prompt
 
     def test_setup_agent_profile_path_gnosis(self) -> None:
         """Test agent_profile_path is set to omenstrat for gnosis."""
@@ -3099,6 +3136,278 @@ class TestHandleGetAgentInfoPreFSM:
         self.handler.context.logger.error.assert_called_once()
 
 
+class TestApplyAgentTopUp:
+    """`/funds-status` reports what is left once the agent tops up its own Agent Signer."""
+
+    @staticmethod
+    def _handler(chain: str, topup_succeeded: Optional[bool] = True) -> HttpHandler:
+        """A handler whose funds-manager rule is the real one."""
+        handler = _make_handler()
+        handler.context.agent_address = AGENT
+        handler.context.shared_state = {
+            GET_AGENT_TOPUP_METHOD_NAME: real_topup_rule(chain)
+        }
+        if topup_succeeded is not None:
+            handler.context.shared_state[TOPUP_SUCCEEDED_KEY] = topup_succeeded
+        handler.context.params.agent_balance_threshold = ETHER // 100
+        handler.context.params.is_running_on_polymarket = chain == "polygon"
+        return handler
+
+    @staticmethod
+    def _native_deficit(status: FundRequirements, chain: str, address: str) -> Any:
+        """The native deficit reported for an account."""
+        return status[chain].accounts[address].tokens[NATIVE].deficit
+
+    def test_short_safe_asks_for_the_signer_shortfall_on_top_of_the_adjusted_deficit(
+        self,
+    ) -> None:
+        """On Polygon, the Agent Signer shortfall in POL joins the USDC-aware Agent Safe deficit."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == (
+            19 * ETHER // 10 - ETHER // 2 + 7
+        )
+
+    @staticmethod
+    def _polystrat_status(
+        adjusted_safe_deficit: Optional[int], safe_pol: int = 0
+    ) -> FundRequirements:
+        """Polystrat targets with an Agent Signer under its reserve; the Agent Safe holds no POL by default."""
+        signer = native(25132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10)
+        safe = native(safe_pol, 40 * ETHER, 10 * ETHER)
+        safe.deficit = adjusted_safe_deficit
+        return FundRequirements(
+            {
+                "polygon": ChainRequirements(
+                    accounts={
+                        AGENT: AccountRequirements(tokens={NATIVE: signer}),
+                        SAFE: AccountRequirements(tokens={NATIVE: safe}),
+                    }
+                )
+            }
+        )
+
+    def test_usdc_covering_the_safe_target_asks_only_the_signer_shortfall(
+        self,
+    ) -> None:
+        """Agent Safe USDC worth more than its target leaves only the Agent Signer POL to fund."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 274868 * ETHER // 10000
+
+    @pytest.mark.parametrize(
+        "safe_pol, signer_deficit",
+        [
+            (0, 274868 * ETHER // 10000),  # empty Agent Safe: the whole need
+            (10 * ETHER, 174868 * ETHER // 10000),  # partial: what the move leaves
+            (40 * ETHER, 0),  # Agent Safe POL covers the move
+        ],
+    )
+    def test_unvalued_usdc_keeps_the_safe_deficit_read(
+        self, safe_pol: int, signer_deficit: int
+    ) -> None:
+        """When the USDC could not be valued, the Agent Signer, not the Agent Safe, asks for the shortfall."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=None, safe_pol=safe_pol)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", SAFE) is None
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert "not valued" in handler.context.logger.warning.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        "refilling, adjusted_safe_deficit, signer_deficit, safe_deficit",
+        [
+            (True, 0, 0, 264868 * ETHER // 10000),  # the Agent Safe asks for the refill
+            (False, 0, 0, 0),  # threshold rule: nothing asked above 3.2 POL
+            (True, None, 264868 * ETHER // 10000, None),  # USDC not valued
+        ],
+    )
+    def test_refill_asks_for_the_signer_target(
+        self,
+        refilling: bool,
+        adjusted_safe_deficit: Optional[int],
+        signer_deficit: Optional[int],
+        safe_deficit: Optional[int],
+    ) -> None:
+        """Agent Signer at 3.5132 POL after a 1 POL partial move, Agent Safe POL empty: 26.4868 POL is asked."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == safe_deficit
+
+    @pytest.mark.parametrize(
+        "refilling, signer_deficit",
+        [
+            (True, 264868 * ETHER // 10000),  # the refill need, on the Agent Signer
+            (False, 0),  # threshold rule: the deficit read
+        ],
+    )
+    def test_failed_topup_still_asks_for_the_refill(
+        self, refilling: bool, signer_deficit: int
+    ) -> None:
+        """After a failed top-up, a refill still asks for the Agent Signer target, crediting no transfer."""
+        handler = self._handler("polygon", topup_succeeded=False)
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == 0
+
+    def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
+        """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
+        handler = self._handler("gnosis")
+        status = funds_status(
+            "gnosis",
+            ETHER // 10,
+            ETHER // 4,
+            wxdai_balance=ETHER // 4,
+            track_wxdai=True,
+        )
+
+        handler._apply_agent_topup(status)
+
+        safe_tokens = status["gnosis"].accounts[SAFE].tokens
+        assert safe_tokens[NATIVE].deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+        assert safe_tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS].deficit == 0
+
+    def test_startup_reports_no_signer_deficit_for_a_pending_topup(self) -> None:
+        """Before any top-up has run, a top-up the Agent Safe covers raises no Agent Signer alert."""
+        handler = self._handler("gnosis", topup_succeeded=None)
+        status = funds_status("gnosis", ETHER // 10, 10 * ETHER)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", AGENT) == 0
+
+    def test_after_a_failed_topup_keeps_the_deficits_read(self) -> None:
+        """After a top-up failed, the Agent Signer deficit is not reported as 0."""
+        handler = self._handler("polygon", topup_succeeded=False)
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_unread_polygon_signer_keeps_the_deficits_read(self) -> None:
+        """No top-up is decided without the Agent Signer balance, so the Agent Safe deficit stands."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", None, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_nothing_due_keeps_the_deficits_read(self) -> None:
+        """With the Agent Signer above its threshold, the adjusted deficits stand."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    @pytest.mark.parametrize("safe_balance", [19 * ETHER // 10, 10 * ETHER])
+    def test_polygon_pol_covering_the_move_keeps_the_usdc_adjusted_safe_deficit(
+        self, safe_balance: int
+    ) -> None:
+        """The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, safe_balance)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_gnosis_reports_the_rule_safe_deficit_even_when_xdai_covers_the_move(
+        self,
+    ) -> None:
+        """Only Polygon keeps the adjusted Agent Safe deficit: Gnosis passes wxDAI to the rule."""
+        handler = self._handler("gnosis")
+        status = funds_status("gnosis", ETHER // 10, 2 * ETHER)
+        status["gnosis"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", SAFE) == (
+            10 * ETHER - (2 * ETHER - 19 * ETHER // 10)
+        )
+
+    def test_signer_below_the_settlement_threshold_keeps_the_deficits_read(
+        self,
+    ) -> None:
+        """No top-up is sent below `agent_balance_threshold`, so the Agent Signer alert shows."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 200, 10 * ETHER)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert (
+            self._native_deficit(status, "polygon", AGENT) == 2 * ETHER - ETHER // 200
+        )
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_failing_rule_keeps_the_deficits_read(self) -> None:
+        """A failing top-up rule never fails `/funds-status`."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME] = MagicMock(
+            side_effect=ValueError("bad status")
+        )
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert "bad status" in handler.context.logger.warning.call_args[0][0]
+
+    def test_handler_responds_with_the_topped_up_status(self) -> None:
+        """The response body carries the deficits left after the top-up."""
+        handler = self._handler("gnosis")
+        handler.context.params.use_x402 = False
+        status = funds_status(
+            "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
+        )
+
+        with (
+            patch.object(handler, "_get_adjusted_funds_status", return_value=status),
+            patch.object(handler, "_send_ok_response") as mock_send,
+        ):
+            handler._handle_get_funds_status(MagicMock(), MagicMock())
+
+        body = mock_send.call_args.args[2]
+        assert body["gnosis"][AGENT][NATIVE]["deficit"] == "0"
+
+
 # ---------------------------------------------------------------------------
 # Resilience audit: BUG 19 -- _handle_get_funds_status no try-except
 # ---------------------------------------------------------------------------
@@ -3582,6 +3891,75 @@ class TestMechPreDepositTopUp:
         assert chain.sent == []
         # This is the one case where asking the user for funds is right.
         assert handler.context.shared_state[_EOA_SHORT] is True
+
+    def test_no_native_headroom_logs_no_deposit_plan(self) -> None:
+        """An EOA with no native gas logs no deposit plan."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        logger = handler.context.logger
+        logged = [c.args[0] for c in logger.info.call_args_list]
+        logged += [c.args[0] for c in logger.warning.call_args_list]
+        assert not [line for line in logged if "; depositing" in line]
+        assert [line for line in logged if "gas reserve" in line] == [
+            f"EOA holds {_GAS_RESERVE} wei, at or under the {_GAS_RESERVE} wei gas reserve."
+        ]
+        logger.warning.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            "not depositing: the EOA is out of native."
+        )
+
+    @pytest.mark.parametrize("held", [0, _TARGET - 1])
+    def test_no_native_headroom_and_short_token_logs_no_deposit_plan(
+        self, held: int
+    ) -> None:
+        """A token tracker the EOA can neither fund nor swap into gets one line."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=held):
+            assert _run(handler, chain) is False
+        logger = handler.context.logger
+        logged = [c.args[0] for c in logger.info.call_args_list]
+        logged += [c.args[0] for c in logger.warning.call_args_list]
+        assert not [line for line in logged if "; depositing" in line]
+        assert "Not swapping: the EOA is out of native." not in logged
+        logger.warning.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            "not depositing: the EOA is out of native "
+            "and holds less of the token than the deposit needs."
+        )
+
+    @pytest.mark.parametrize("held", [None, _TARGET])
+    def test_no_native_headroom_keeps_the_token_flow_otherwise(
+        self, held: Optional[int]
+    ) -> None:
+        """A held or unreadable token balance still reaches the deposit plan."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=held):
+            _run(handler, chain)
+        handler.context.logger.info.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            f"depositing {_TARGET} into {_TRACKER}."
+        )
+
+    def test_a_native_deposit_rechecks_the_eoa(self) -> None:
+        """An EOA drained after the check still sends nothing."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        account = MagicMock()
+        account.address = "0x" + "ee" * 20
+
+        with patch.object(handler, "_send_from_eoa") as send:
+            assert (
+                handler._deposit_native(
+                    "gnosis", 100, account, _SAFE, _TRACKER, _TARGET
+                )
+                is False
+            )
+        send.assert_not_called()
 
     def test_the_eoa_flag_is_refreshed_even_when_nothing_is_deposited(self) -> None:
         """A user who funded the agent must stop being asked for funds."""

@@ -41,14 +41,22 @@ from typing import Any, Dict, List, Tuple
 from unittest import mock
 
 import pytest
-from aea.helpers.env_vars import ENV_VARIABLE_RE, apply_env_variables_on_agent_config
+from aea.helpers.env_vars import (
+    ENV_VARIABLE_RE,
+    apply_env_variables,
+    apply_env_variables_on_agent_config,
+)
 from aea.helpers.yaml_utils import yaml_load_all
 
-from packages.valory.skills.funds_manager.models import Params
+from packages.valory.skills.funds_manager.models import NATIVE_ADDRESSES, Params
 
 # packages/valory/skills/trader_abci/tests/ -> packages/valory/
 _VALORY_DIR = Path(__file__).resolve().parents[3]
 AEA_CONFIG_PATH = _VALORY_DIR / "agents" / "trader" / "aea-config.yaml"
+SERVICES_DIR = _VALORY_DIR / "services"
+
+# Must outlast Pearl's middleware chat deadline, so a slow reply is not a 408.
+HTTP_SERVER_TIMEOUT = 65.0
 
 # The path-derived env var the middleware exports for the (anonymous) mechs
 # marketplace subgraph url; open-aea derives this name from the config path.
@@ -95,6 +103,18 @@ def _override(docs: List[Dict[str, Any]], component: str) -> Dict[str, Any]:
         if component in str(doc.get("public_id", "")):
             return doc
     raise AssertionError(f"override for {component!r} not found in aea-config.yaml")
+
+
+def _resolve_service(service: str, env: Dict[str, str]) -> List[Dict[str, Any]]:
+    """Resolve a service's component overrides against ``env``.
+
+    :param service: the service package name.
+    :param env: the environment variables to apply during resolution.
+    :return: the service's override documents with env vars substituted.
+    """
+    path = SERVICES_DIR / service / "service.yaml"
+    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
+    return apply_env_variables(overrides, env)
 
 
 @pytest.mark.parametrize(
@@ -241,3 +261,121 @@ def test_agent_config_does_not_override_headers() -> None:
         if isinstance(cfg.get("args"), dict) and "headers" in cfg["args"]
     ]
     assert not overriding, f"headers override reintroduced for: {overriding}"
+
+
+@pytest.mark.parametrize(
+    "component, key, env_var, default",
+    [
+        (
+            "trader_abci",
+            "polymarket_exchange_v3_address",
+            "POLYMARKET_EXCHANGE_V3",
+            "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
+        ),
+        (
+            "trader_abci",
+            "polymarket_position_manager_address",
+            "POLYMARKET_POSITION_MANAGER",
+            "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF",
+        ),
+        (
+            "trader_abci",
+            "polymarket_router_address",
+            "POLYMARKET_ROUTER",
+            "0x12121212006e4CD160D18e3f00711DA5c3372600",
+        ),
+        (
+            "polymarket_client",
+            "position_manager_address",
+            "POLYMARKET_POSITION_MANAGER",
+            "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF",
+        ),
+        (
+            "polymarket_client",
+            "router_address",
+            "POLYMARKET_ROUTER",
+            "0x12121212006e4CD160D18e3f00711DA5c3372600",
+        ),
+    ],
+)
+def test_v2_address_params_resolve(
+    component: str, key: str, env_var: str, default: str
+) -> None:
+    """Each Protocol V2 address resolves to the documented default or its env var.
+
+    Addresses from https://docs.polymarket.com/resources/contracts.
+
+    :param component: the component whose override holds the address.
+    :param key: the address arg name.
+    :param env_var: the env var that overrides it.
+    :param default: the documented Polygon address.
+    """
+    override = "0x00000000000000000000000000000000000000A1"
+    for env, expected in (({}, default), ({env_var: override}, override)):
+        doc = _override(_resolve(env), component)
+        args = doc.get("config") or doc["models"]["params"]["args"]
+        assert args.get(key) == expected
+
+
+def test_agent_config_http_server_timeout_default() -> None:
+    """The agent-level http_server timeout defaults to HTTP_SERVER_TIMEOUT."""
+    assert _override(_resolve({}), "http_server")["config"]["timeout"] == (
+        HTTP_SERVER_TIMEOUT
+    )
+
+
+@pytest.mark.parametrize("service", ["trader_pearl", "polymarket_trader"])
+def test_service_http_server_timeout(service: str) -> None:
+    """Each Pearl service defaults to the chat deadline and keeps its env override.
+
+    :param service: the service package name.
+    """
+    for env, expected in (
+        ({}, HTTP_SERVER_TIMEOUT),
+        ({"HTTP_SERVER_TIMEOUT": "90.5"}, 90.5),
+    ):
+        doc = _override(_resolve_service(service, env), "http_server")
+        assert doc["config"]["timeout"] == expected
+
+
+@pytest.mark.parametrize("service", ["trader_pearl", "polymarket_trader"])
+def test_service_min_oracle_prob_default(service: str) -> None:
+    """Each Pearl service rejects a side its own forecast rates below 0.5.
+
+    :param service: the service package name.
+    """
+    args = _override(_resolve_service(service, {}), "trader_abci")["models"]["params"][
+        "args"
+    ]
+    assert args["strategies_kwargs"]["min_oracle_prob"] == 0.5
+
+
+@pytest.mark.parametrize(
+    "service, chain, expected",
+    [
+        # Polygon: covers a ~1.06M-gas redeem up to 1,509 gwei.
+        ("polymarket_trader", "polygon", 1_600_000_000_000_000_000),
+        ("trader_pearl", "gnosis", 10_000_000_000_000_000),
+    ],
+)
+def test_service_agent_balance_threshold_default(
+    service: str, chain: str, expected: int
+) -> None:
+    """Each service's Agent Signer floor stays below its Agent Signer top-up threshold.
+
+    Under the floor no Agent Safe top-up is built and every transaction waits;
+    between the floor and the threshold the Agent Safe tops the Agent Signer up.
+
+    :param service: the service package name.
+    :param chain: the service's chain key in ``fund_requirements``.
+    :param expected: the default floor, in wei.
+    """
+    docs = _resolve_service(service, {})
+    floor = _override(docs, "trader_abci")["models"]["params"]["args"][
+        "agent_balance_threshold"
+    ]
+    fund_requirements = _override(docs, "funds_manager")["models"]["params"]["args"][
+        "fund_requirements"
+    ]
+    assert floor == expected
+    assert floor < fund_requirements[chain]["agent"][NATIVE_ADDRESSES[0]]["threshold"]

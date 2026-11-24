@@ -19,7 +19,7 @@
 
 """This package contains the behaviours of the transaction settlement multiplexer."""
 
-from typing import Generator, Optional, Set, Type, cast
+from typing import Generator, List, Optional, Set, Type, cast
 
 from aea.exceptions import AEAEnforceError
 from web3 import Web3
@@ -28,6 +28,13 @@ from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
+)
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    Field,
+    field,
+    format_amount,
+    record_event,
 )
 from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.decision_maker_abci.payloads import VotingPayload
@@ -151,11 +158,28 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         """Set the redeeming progress."""
         self.shared_state.redeeming_progress = value
 
+    def _record_payout(self, fields: List[Field]) -> None:
+        """Append a ``Collected a payout`` card to the feed."""
+        record_event(
+            self.context.params.store_path,
+            EventType.PAYOUT_COLLECTED,
+            fields,
+            self.context.logger,
+        )
+
     def _on_redeem_round_tx_settled(self) -> None:
         """Handle the redeem round."""
         self.context.logger.info(
             "Redeeming transaction was settled. Resetting the redeeming progress."
         )
+        # Read before the reset below forgets which markets were claimed.
+        for title, amount in self.redeeming_progress.claiming_payouts:
+            self._record_payout(
+                [
+                    field("Market", title),
+                    field("Amount", format_amount(amount / 10**18, False)),
+                ]
+            )
         claimed_condition_ids = self.redeeming_progress.claimed_condition_ids
         claimed_condition_ids.extend(self.redeeming_progress.claiming_condition_ids)
         self.redeeming_progress = RedeemingProgress()
@@ -163,6 +187,13 @@ class PostTxSettlementBehaviour(BaseBehaviour):
         self.context.logger.info(
             f"The following condition ids were claimed so far: {claimed_condition_ids}"
         )
+
+    def _on_polymarket_redeem_round_tx_settled(self) -> None:
+        """Write the payouts of the Polymarket redeem tx that just settled."""
+        payouts = self.shared_state.polymarket_payouts_to_record  # type: ignore
+        self.shared_state.polymarket_payouts_to_record = []  # type: ignore
+        for fields in payouts:
+            self._record_payout(fields)
 
     def _on_tx_settled(self) -> None:
         """Handle the tx settled event."""

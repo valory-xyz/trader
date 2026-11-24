@@ -41,6 +41,10 @@ class FinishedDecisionRequestRound(DegenerateRound):
     """A round representing that decision request has finished."""
 
 
+class FinishedRankingRequestRound(DegenerateRound):
+    """A round representing that a ranking request is ready for the mech."""
+
+
 class FinishedWithoutRedeemingRound(DegenerateRound):
     """A round representing that decision-making has finished without redeeming."""
 
@@ -99,6 +103,10 @@ class FinishedOmenWithdrawRound(DegenerateRound):
 
 class FinishedPolymarketTopUpTxPreparationRound(DegenerateRound):
     """A round representing that a Safe→DepositWallet top-up has been prepared and needs tx settlement."""
+
+
+class FailedAgentTopUpTxRound(DegenerateRound):
+    """A round representing that an Agent Safe to Agent Signer top-up tx failed to settle."""
 
 
 class FinishedPolymarketWithdrawTopUpTxPreparationRound(DegenerateRound):

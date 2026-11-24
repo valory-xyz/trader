@@ -32,6 +32,7 @@ import pytest
 from requests import ConnectionError as RequestsConnectionError
 from requests import Timeout as RequestsTimeout
 
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
@@ -45,6 +46,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     LEADERBOARD_REQUEST_TIMEOUT,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
+    MECH_ANALYTICS_LOOKBACK_SECONDS,
     MIN_TRADES_FOR_ROI_DISPLAY,
     MORE_TRADES_NEEDED_TEXT,
     NA,
@@ -2010,6 +2012,22 @@ class TestGetTotalMechRequests:
 _REQ_Q1 = {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "10"}
 
 
+def _analytics_fixture_rows(sender: Optional[dict]) -> Optional[List[dict]]:
+    """Serve existing request fixtures through the migrated analytics boundary."""
+    if sender is None:
+        return None
+    return [
+        {
+            "request_id": f"fixture-{index}",
+            "question_title": (row.get("parsedRequest") or {}).get("questionTitle"),
+            "requested_at": datetime.fromtimestamp(
+                int(row.get("blockTimestamp") or 0), tz=timezone.utc
+            ).isoformat(),
+        }
+        for index, row in enumerate(sender.get("requests", []))
+    ]
+
+
 class TestGetOpenMarketRequests:
     """Tests for _get_open_market_requests."""
 
@@ -2036,6 +2054,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
@@ -2100,6 +2123,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
             patch.object(b, "_fetch_open_markets", side_effect=_return_gen([])),
         ):
             gen = b._get_open_market_requests("0xaddr")
@@ -2108,6 +2136,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 assert e.value == 0
         assert b._open_market_request_keys == []
+        analytics_page.assert_not_called()
 
     def test_omen_with_open_markets(self) -> None:
         """Counts requests matching open market titles on Omen."""
@@ -2126,6 +2155,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2136,6 +2170,7 @@ class TestGetOpenMarketRequests:
                 assert e.value == 1
         # The counted requests themselves are kept for the profit series.
         assert b._open_market_request_keys == [("Q1", 10)]
+        analytics_page.assert_not_called()
 
     def test_polymarket_with_open_positions(self) -> None:
         """Counts requests matching open position titles on Polymarket."""
@@ -2151,6 +2186,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(
                 b,
                 "_fetch_polymarket_open_position_titles",
@@ -2178,6 +2218,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2186,6 +2231,8 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+
+        analytics_page.assert_not_called()
 
     def test_omen_null_question_in_open_markets_skipped(self) -> None:
         """Markets with null or missing question field are skipped, not crash."""
@@ -2206,6 +2253,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2215,6 +2267,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 # Only Q1 matches; null/missing entries are skipped
                 assert e.value == 1
+        analytics_page.assert_not_called()
 
     def test_flag_on_scored_rows_fetch_failure_returns_none(self) -> None:
         """Flag-on scored-rows fetch failure returns ``None``, not ``0``.
@@ -5620,7 +5673,7 @@ class TestFetchAsyncAct:
             pass
 
     def test_disabled(self) -> None:
-        """Sends vote=False when disabled."""
+        """Sends vote=True when disabled."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.is_agent_performance_summary_enabled = False
@@ -5632,10 +5685,10 @@ class TestFetchAsyncAct:
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
         assert isinstance(call_args, FetchPerformanceDataPayload)
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_should_not_update(self) -> None:
-        """Sends vote=False when _should_update returns False."""
+        """Sends vote=True when _should_update returns False."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         with (
@@ -5646,7 +5699,7 @@ class TestFetchAsyncAct:
         ):
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_successful_update_all_metrics_valid(self) -> None:
         """Sends vote=True when all metrics are valid (not NA)."""
@@ -6336,7 +6389,7 @@ class TestUpdateAchievementsAsyncAct:
             pass
 
     def test_disabled(self) -> None:
-        """Sends vote=False when achievement checker is disabled."""
+        """Sends vote=True when the achievement checker is disabled."""
         b = _make_update_behaviour()
         ctx, params, synced_data, state = _mock_context()
         params.is_achievement_checker_enabled = False
@@ -6348,7 +6401,7 @@ class TestUpdateAchievementsAsyncAct:
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
         assert isinstance(call_args, UpdateAchievementsPayload)
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_achievements_none_creates_new(self) -> None:
         """Creates new Achievements when None."""
@@ -6574,6 +6627,7 @@ class TestPolymarketIncrementalTitleExtraction:
         mech_requests = [
             {
                 "parsedRequest": {"questionTitle": "PM Question 1"},
+                "requestId": "polystrat-fixture-1",
                 "blockTimestamp": str(new_ts - 100),
             }
         ]
@@ -8283,6 +8337,11 @@ class TestKpiSeriesAgreement:
         last_residual_rebuild_ts: int = 0,
     ) -> ProfitOverTimeData:
         """Run a backfill over the given stats and fetched requests."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8311,6 +8370,11 @@ class TestKpiSeriesAgreement:
         is_polymarket: bool = False,
     ) -> ProfitOverTimeData:
         """Run one incremental update on top of ``existing``."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8328,7 +8392,11 @@ class TestKpiSeriesAgreement:
                 b._perform_incremental_update("0xaddr", now, existing)
             )
         assert fetch_mock.call_args.kwargs == {
-            "block_timestamp_gt": existing.last_mech_timestamp
+            "block_timestamp_gt": (
+                max(existing.last_mech_timestamp - MECH_ANALYTICS_LOOKBACK_SECONDS, 0)
+                if is_polymarket
+                else existing.last_mech_timestamp
+            )
         }
         return result
 
@@ -8783,8 +8851,8 @@ class TestKpiSeriesAgreement:
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
             )
         ]
-        if branch == "omen-mech-analytics":
-            params.use_mech_analytics = True
+        if branch in ("omen-mech-analytics", "polymarket"):
+            params.use_mech_analytics = not is_polymarket
             params.mech_analytics_url = "https://mech-analytics.test"
             sources += [
                 patch.object(
@@ -9646,7 +9714,7 @@ class TestAsyncActLeaderboard:
         """The step runs even when the performance summary is skipped."""
         step = self._run_act(should_update=False)
         step.assert_called_once()
-        assert step.finish.call_args[0][0].vote is False
+        assert step.finish.call_args[0][0].vote is True
 
     def test_runs_after_summary_update(self) -> None:
         """The step runs after a summary refresh and leaves the vote alone."""
@@ -9693,3 +9761,20 @@ class TestAsyncActLeaderboard:
                 pass  # pragma: no cover
         step.assert_called()
         assert finish.call_args[0][0].vote is True
+
+
+def test_v2_position_in_locked_funds_and_summary() -> None:
+    """Open positions include the Safe's V2 positions, not a settled V2 row with nothing to claim."""
+    b = _make_fetch_behaviour()
+    ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+    v2_open = {**pm.V2_OPEN, "current_value": 0.0}  # unsettled, so still open
+    rows = (v2_open, pm.V2_WIN0, pm.V2_WIN, pm.V2_LOSE, pm.V1_OPEN, pm.V1_LOSE)
+    with pm._safe_world(*rows) as conn:
+        del conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))]
+        with _patch_context(b, ctx, synced_data)[0]:
+            pm._wire(b, conn)
+            gen = b._fetch_polymarket_open_position_titles()
+            next(gen)  # the positions request
+            titles = _drive_gen(gen)
+    claimed = (pm.V2_WIN, pm.V2_LOSE)  # V2_WIN has no balance left to claim
+    assert titles == {row["title"] for row in rows if row not in claimed}

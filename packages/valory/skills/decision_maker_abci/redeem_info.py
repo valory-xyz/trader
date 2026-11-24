@@ -25,6 +25,10 @@ from typing import Any, List
 
 from hexbytes import HexBytes
 
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    QUESTION_DATA_SEPARATOR,
+)
+
 INVALID_MARKET_ANSWER = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 )
@@ -94,6 +98,11 @@ class FPMM:
     def current_answer_index(self) -> int:
         """Get the index of the market's current answer."""
         return int(self.currentAnswer, 16)
+
+    @property
+    def title(self) -> str:
+        """Get the market's question, without the outcomes and category."""
+        return self.question.data.split(QUESTION_DATA_SEPARATOR)[0]
 
 
 @dataclasses.dataclass(frozen=True)

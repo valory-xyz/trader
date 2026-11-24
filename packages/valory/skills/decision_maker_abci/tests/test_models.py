@@ -20,13 +20,16 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
-from typing import Any
+from typing import Any, Generator, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
     BenchmarkingMockData,
@@ -44,6 +47,26 @@ from packages.valory.skills.decision_maker_abci.models import (
     extract_keys_from_template,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.redeem_info import (
+    Condition,
+    FPMM,
+    Question,
+    Trade,
+)
+
+
+@pytest.fixture
+def london_tz(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """Run the test with the local timezone set to Europe/London.
+
+    :param monkeypatch: the pytest monkeypatch fixture.
+    :yield: nothing; the timezone is restored afterwards.
+    """
+    monkeypatch.setenv("TZ", "Europe/London")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
 
 
 class TestPromptTemplate:
@@ -143,6 +166,51 @@ class TestRedeemingProgress:
         assert progress.answered == []
         assert progress.claiming_condition_ids == []
         assert progress.claimed_condition_ids == []
+
+    @staticmethod
+    def _trade(condition_byte: bytes, title: str, answer: str) -> Trade:
+        """Return a trade on a binary market with the given answer."""
+        return Trade(
+            fpmm=FPMM(
+                answerFinalizedTimestamp=1000,
+                collateralToken="0xtoken",
+                condition=Condition(
+                    id=HexBytes(condition_byte * 32), outcomeSlotCount=2
+                ),
+                creator="0xcreator",
+                creationTimestamp=900,
+                currentAnswer=answer,
+                question=Question(id=condition_byte * 32, data=f"{title}\u241fYes"),
+                templateId=2,
+            ),
+            outcomeIndex=0,
+            outcomeTokenMarginalPrice=0.5,
+            outcomeTokensTraded=10,
+            transactionHash="0xhash",
+        )
+
+    def test_claiming_payouts(self) -> None:
+        """Each market being claimed pays its claimable amount; an invalid one an equal share."""
+        won = self._trade(b"\x01", "Won market", "0x" + "0" * 64)
+        invalid = self._trade(b"\x02", "Invalid market", "0x" + "f" * 64)
+        not_claiming = self._trade(b"\x03", "Later", "0x" + "0" * 64)
+        progress = RedeemingProgress(
+            trades={won, invalid, not_claiming},
+            claimable_amounts={
+                won.fpmm.condition.id: 3 * 10**18,
+                invalid.fpmm.condition.id: 4 * 10**18,
+                not_claiming.fpmm.condition.id: 10**18,
+            },
+            claiming_condition_ids=[
+                won.fpmm.condition.id.to_0x_hex(),
+                invalid.fpmm.condition.id.to_0x_hex(),
+            ],
+        )
+
+        assert sorted(progress.claiming_payouts) == [
+            ("Invalid market", 2 * 10**18),
+            ("Won market", 3 * 10**18),
+        ]
 
     def test_check_finished_not_started(self) -> None:
         """Test check_finished when check has not started."""
@@ -385,10 +453,72 @@ class TestSharedStateInit:
         assert state.bet_id_row_manager == {}
         assert state.benchmarking_mech_calls == 0
         assert state.mech_timed_out is False
+        assert state.orderbook_failures == 0
+        assert state.orderbook_failing_since is None
+        assert state.orderbook_fetch_failed is False
         # Must default to None, not False: the staking-regime cache distinguishes
         # "never computed" (None ⇒ read on-chain) from a computed OLD verdict
         # (False ⇒ cache hit). A False default would suppress the first read.
         assert state.staking_regime_is_new is None
+
+
+class TestOrderbookFailures:
+    """Tests for the count of consecutive failed order-book fetches."""
+
+    @staticmethod
+    def _state() -> SharedState:
+        state = object.__new__(SharedState)
+        state.orderbook_failures = 0
+        state.orderbook_failing_since = None
+        return state
+
+    def test_failures_count_from_the_first_one(self) -> None:
+        """Consecutive failures add up and keep the time of the first."""
+        state = self._state()
+        for timestamp in (100, 200, 300):
+            state.record_orderbook_fetch(False, timestamp)
+        assert state.orderbook_failures == 3
+        assert state.orderbook_failing_since == 100
+
+    def test_reached_fetch_resets_the_count(self) -> None:
+        """A fetch that reaches the CLOB ends the run of failures."""
+        state = self._state()
+        state.record_orderbook_fetch(False, 100)
+        state.record_orderbook_fetch(True, 200)
+        assert state.orderbook_failures == 0
+        assert state.orderbook_failing_since is None
+        state.record_orderbook_fetch(False, 300)
+        assert state.orderbook_failing_since == 300
+
+    @pytest.mark.parametrize(
+        "response, error, reached",
+        [
+            ({"asks": [], "bids": []}, None, True),
+            ({"error": "404"}, "404", True),
+            ({"error": "reset", CLOB_UNREACHABLE: True}, "reset", False),
+            (None, "no response", False),
+            ("odd", "unexpected 'odd'", True),
+        ],
+    )
+    def test_response_is_counted_by_reach(
+        self, response: Any, error: Optional[str], reached: bool
+    ) -> None:
+        """A response counts as a failure only when the CLOB could not be reached."""
+        state = self._state()
+        state.orderbook_failures = 2
+        assert state.record_orderbook_response(response, 100) == (error, reached)
+        assert state.orderbook_failures == (0 if reached else 3)
+
+    @pytest.mark.parametrize(
+        "failures, expected", [(0, False), (4, False), (5, True), (6, True)]
+    )
+    def test_unavailable_from_the_threshold(
+        self, failures: int, expected: bool
+    ) -> None:
+        """The order books are unavailable from the threshold on."""
+        state = self._state()
+        state.orderbook_failures = failures
+        assert state.is_orderbook_unavailable(5) is expected
 
 
 class TestSharedState:
@@ -470,26 +600,44 @@ class TestSharedState:
         self.state.current_liquidity_amounts = [3000, 4000]
         assert self.state.liquidity_amounts["test_id"] == [3000, 4000]
 
-    def test_initialize_simulated_now_timestamps(self) -> None:
-        """Test _initialize_simulated_now_timestamps populates simulated_days."""
-        now_ts = int(time.time())
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="needs time.tzset")
+    @pytest.mark.parametrize(
+        "now_ts",
+        [
+            1768478400,  # 2026-01-15T12:00:00Z, no clock change in the window
+            1792756800,  # 2026-10-23T12:00:00Z, window crosses the UK clock change
+        ],
+        ids=["january", "october_dst"],
+    )
+    @pytest.mark.parametrize(
+        "extra, days",
+        # The last day is simulated only while the latest bet opens more than
+        # the safe voting range after it.
+        [(1, 6), (0, 5)],
+        ids=["last_day_in", "last_day_out"],
+    )
+    @pytest.mark.usefixtures("london_tz")
+    def test_initialize_simulated_now_timestamps(
+        self, now_ts: int, extra: int, days: int
+    ) -> None:
+        """Simulated days are exactly one day apart in any local timezone."""
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
         mock_bet1 = MagicMock()
         mock_bet1.openingTimestamp = now_ts + 86400 * 3 + safe_voting_range + 1
         mock_bet2 = MagicMock()
-        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
+        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + extra
         bets = [mock_bet1, mock_bet2]
 
-        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        with patch(
+            "packages.valory.skills.decision_maker_abci.models.time.time",
+            return_value=float(now_ts),
+        ):
+            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
-        assert len(self.state.simulated_days) > 0
-        # Each day is separated by one day interval
-        for i in range(1, len(self.state.simulated_days)):  # type: ignore[arg-type]
-            diff = self.state.simulated_days[i] - self.state.simulated_days[i - 1]
-            assert diff == 86400
+        assert self.state.simulated_days == [now_ts + i * 86400 for i in range(days)]
 
     def test_increase_one_day_simulation(self) -> None:
         """Test increase_one_day_simulation increments the index."""
@@ -581,6 +729,8 @@ def _build_decision_maker_params_kwargs() -> dict:
         "agent_registry_address": "0xaddr",
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
+        "declined_market_cooldown": 3600,
+        "orderbook_unavailable_threshold": 5,
         "polymarket_spread_min": 0.0,
         "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
@@ -633,11 +783,16 @@ def _build_decision_maker_params_kwargs() -> dict:
         "polymarket_neg_risk_adapter_address": "0xnegadapt",
         "polymarket_ctf_collateral_adapter_address": "0xctfcoladapt",
         "polymarket_neg_risk_ctf_collateral_adapter_address": "0xnegctfcoladapt",
+        "polymarket_exchange_v3_address": "0xexchv3",
+        "polymarket_position_manager_address": "0xposmgr",
+        "polymarket_router_address": "0xrouter",
         "pol_threshold_for_swap": 1000,
         "slippages_for_swap": {"ETH": 0.01},
         "is_outcome_side_threshold_filter_enabled": False,
         "outcome_side_threshold_filter_threshold": 0.5,
         "exclude_neg_risk_markets": False,
+        "enable_market_ranking": False,
+        "ranking_min_score": 0.5,
     }
 
 
@@ -664,6 +819,36 @@ class TestDecisionMakerParams:
                 sample_bets_closing_days=0,
             )
 
+    def test_negative_declined_market_cooldown_raises(self) -> None:
+        """Test that a negative declined_market_cooldown raises ValueError."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = -1
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="must not be negative"),
+        ):
+            DecisionMakerParams(**kwargs)
+
+    def test_zero_declined_market_cooldown_is_allowed(self) -> None:
+        """Test that 0, the off switch, is accepted."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = 0
+        with patch.object(
+            DecisionMakerParams.__mro__[1], "__init__", return_value=None
+        ):
+            params = DecisionMakerParams(**kwargs)
+        assert params.declined_market_cooldown == 0
+
+    def test_zero_orderbook_unavailable_threshold_raises(self) -> None:
+        """Test that a threshold below one failed fetch raises ValueError."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["orderbook_unavailable_threshold"] = 0
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="must be at least 1"),
+        ):
+            DecisionMakerParams(**kwargs)
+
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""
         kwargs = _build_decision_maker_params_kwargs()
@@ -672,6 +857,8 @@ class TestDecisionMakerParams:
         ):
             params = DecisionMakerParams(**kwargs)
         assert params.sample_bets_closing_days == 7
+        assert params.declined_market_cooldown == 3600
+        assert params.orderbook_unavailable_threshold == 5
         assert params.trading_strategy == "kelly_criterion"
         assert params.slippage == 0.1
         assert params.epsilon == 0.2
@@ -718,11 +905,16 @@ class TestDecisionMakerParams:
             params.polymarket_neg_risk_ctf_collateral_adapter_address
             == "0xnegctfcoladapt"
         )
+        assert params.polymarket_exchange_v3_address == "0xexchv3"
+        assert params.polymarket_position_manager_address == "0xposmgr"
+        assert params.polymarket_router_address == "0xrouter"
         assert params.pol_threshold_for_swap == 1000
         assert params.slippages_for_swap == {"ETH": 0.01}
         assert params.is_outcome_side_threshold_filter_enabled is False
         assert params.outcome_side_threshold_filter_threshold == 0.5
         assert params.exclude_neg_risk_markets is False
+        assert params.enable_market_ranking is False
+        assert params.ranking_min_score == 0.5
         assert params.polymarket_spread_min == 0.0
         assert params.polymarket_spread_max == 1.0
 
