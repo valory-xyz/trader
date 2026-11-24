@@ -1,0 +1,23 @@
+name: olas_mech
+author: valory
+version: 0.1.0
+type: contract
+description: olas mech contract
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeihlplpj6vl7iovtja5zzrhz6gm2ixtvvhmxgbnvpola3kkj2ma7uq
+  build/AgentMech.json: bafybeicum5hykq2jpzxzkylo4mgnepxtcu34bimhyk66jsv7qud2augnlm
+  contract.py: bafybeibhuzuzuf6cyomd2sbog2iwugtahecqmqoejbdfbg7wtzq4txa47e
+  tests/__init__.py: bafybeigs2gce4kkhgh4tf5e7mls2gcjq6j343d6usa3les75euruwvonre
+  tests/test_contract.py: bafybeihvz3ztityygcfqwy4hufcwhhjdvygibmcfdgzqusvockzfhkabcq
+fingerprint_ignore_patterns: []
+class_name: OlasMechContract
+contract_interface_paths:
+  ethereum: build/AgentMech.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.2.10
+  web3: {}
+contracts:
+- valory/mech_marketplace:0.1.0:bafybeidk67435jzze4pyrqjixspubbsb2rvpe7jobnhttxavi3s3upu7ne
