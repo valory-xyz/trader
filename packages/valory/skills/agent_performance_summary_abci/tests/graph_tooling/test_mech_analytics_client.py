@@ -324,6 +324,33 @@ class TestRowsAsSubgraphMechRequests:
         }
         assert adapted[0]["blockTimestamp"] > 0
 
+    @pytest.mark.parametrize(
+        "resolution_status, charge_usd, expected",
+        [
+            ("undelivered", None, "0"),
+            ("undelivered", "0.0073", "0"),
+            ("unparseable", None, None),
+            ("pending", "0.0073", "0.0073"),
+            ("resolved", None, None),
+        ],
+    )
+    def test_an_undelivered_request_costs_nothing(
+        self,
+        resolution_status: str,
+        charge_usd: Optional[str],
+        expected: Optional[str],
+    ) -> None:
+        """Only a never-delivered request is priced at zero; other rows keep their charge."""
+        rows = [
+            {
+                "question_title": "Will it rain?",
+                "requested_at": "2026-11-20T10:00:00Z",
+                "charge_usd": charge_usd,
+                "resolution_status": resolution_status,
+            }
+        ]
+        assert rows_as_subgraph_mech_requests(rows)[0]["chargeUsd"] == expected
+
     @pytest.mark.parametrize("charge_usd", ["0.0073", "0", None])
     def test_charge_is_carried_as_served(self, charge_usd: Optional[str]) -> None:
         """The reported charge rides along unchanged, ``None`` when the row has none."""
