@@ -80,7 +80,7 @@ LEADERBOARD_CLOCK_SKEW_SECONDS = 300
 LEADERBOARD_PAGE_PATH = "/leaderboard"
 
 # Bump to force a one-shot rebuild of stored profit_over_time.
-PROFIT_OVER_TIME_SCHEMA_VERSION = 3
+PROFIT_OVER_TIME_SCHEMA_VERSION = 4
 
 
 @dataclass
@@ -167,6 +167,9 @@ class ProfitDataPoint:
     daily_profit_raw: Optional[float] = (
         None  # Gross daily profit from subgraph (before fees)
     )
+    # USD cost of the day's mech requests; ``None`` on points stored before
+    # costs were recorded, which cost the flat fee per request.
+    daily_mech_cost: Optional[float] = None
 
 
 @dataclass
@@ -187,7 +190,8 @@ class ProfitOverTimeData:
     )
     schema_version: int = 0  # Bumped to trigger one-shot rebuild on cutovers
     # Requests past the watermark held back uncharged while the KPI counts
-    # them as open; each entry is ``{"title": str, "timestamp": int}``.
+    # them as open; each entry is ``{"title": str, "timestamp": int,
+    # "cost_usd": str}`` (``cost_usd`` absent on entries stored before it).
     pending_mech_requests: List[Dict[str, Any]] = field(default_factory=list)
     last_residual_rebuild_ts: int = 0  # Unix timestamp, 0 if never
     residual_rebuild_backoff_days: int = 1  # Wait before the next residual rebuild
@@ -245,9 +249,13 @@ class Achievements:
 
 @dataclass
 class OffchainDepositState:
-    """Cumulative on-chain BalanceTracker Deposit tracking for pre-deposit-as-loss ROI.
+    """Cumulative on-chain BalanceTracker Deposit tracking (no longer updated).
 
-    Under the pre-deposit-as-loss decision, every top-up to a Safe's
+    ROI now counts every mech request, off-chain ones included, at its
+    charge, so deposits no longer enter it. The field stays so summaries
+    stored with it keep loading and keep it on save.
+
+    Under the former pre-deposit-as-loss decision, every top-up to a Safe's
     ``mapRequesterBalances`` on the BalanceTracker contract (the mech
     marketplace only routes requests; the balance mapping and the
     ``Deposit`` event live on the tracker) is booked as spent the moment
@@ -673,13 +681,8 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_achievement_checker_enabled: bool = self._ensure(
             "is_achievement_checker_enabled", kwargs, bool
         )
-        # BalanceTracker contract address for pre-deposit-as-loss ROI
-        # accounting. Empty or the zero address disables the Deposit-event
-        # scan; the helper falls back to the cached total (see
-        # ``_fetch_offchain_prepaid_wei``). Kept as a trader-local skill
-        # param on purpose — this is an ROI-accounting concern, not a
-        # mech-routing concern, so it does not belong on
-        # ``mech_marketplace_config``.
+        # BalanceTracker contract address. ROI no longer reads deposits;
+        # the param stays so existing agent and service configs still load.
         self.balance_tracker_address: str = self._ensure(
             "balance_tracker_address", kwargs, str
         )
@@ -804,8 +807,8 @@ class SharedState(BaseSharedState):
         ``read_existing_performance_summary`` to a fresh summary) can't
         cascade into wiping this specific irreversible field.
         ``_save_agent_performance_summary`` calls this before overwriting
-        so the mid-cycle write from ``_fetch_offchain_prepaid_wei``
-        survives the cycle-end save under any sibling-corruption path.
+        so a stored ``offchain_deposits`` survives the cycle-end save under
+        any sibling-corruption path.
 
         :return: the persisted ``OffchainDepositState`` if the file has a
             valid entry, ``None`` if the file is missing, unreadable,
@@ -898,36 +901,6 @@ class SharedState(BaseSharedState):
         :return: the persisted ``ActivityGoal``, or ``None`` if unavailable.
         """
         return read_activity_goal(self.params.store_path)
-
-    def write_offchain_deposits_to_disk(self, state: "OffchainDepositState") -> None:
-        """Atomic-write ``offchain_deposits`` to disk, preserving sibling fields.
-
-        Mirrors ``read_offchain_deposits_from_disk`` on the write side.
-        Reads the raw JSON dict (bypassing every dataclass
-        ``__post_init__``), updates only the ``offchain_deposits`` key,
-        writes back atomically via tempfile + ``os.replace``.
-        ``_fetch_offchain_prepaid_wei`` uses this instead of
-        ``overwrite_performance_summary(summary)`` because the summary
-        read it would otherwise pair with can silently degrade to a
-        fresh dataclass on any nested-field ``__post_init__`` raise,
-        which would then wipe every sibling field on disk (metrics,
-        agent_details, prediction_history, ...) during the mid-cycle
-        checkpoint write. Split-write keeps our checkpoint safe without
-        depending on other fields' validation state.
-
-        If the file is missing or unreadable, writes a minimal
-        ``{"offchain_deposits": ...}`` — the operator has explicitly
-        opted in to off-chain accounting at this point, so keeping the
-        checkpoint alive is more important than refusing to write over
-        a corrupt file. The next cycle-end
-        ``_save_agent_performance_summary`` will re-populate the sibling
-        fields from live data.
-
-        :param state: the ``OffchainDepositState`` to persist.
-        """
-        write_performance_summary_key(
-            self.params.store_path, "offchain_deposits", asdict(state)
-        )
 
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file atomically.

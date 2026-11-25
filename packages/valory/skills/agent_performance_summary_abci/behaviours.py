@@ -24,6 +24,7 @@ import json
 import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from functools import partial
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlencode
@@ -35,11 +36,7 @@ from packages.valory.connections.polymarket_client.connection import (
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
-from packages.valory.contracts.mech_prepaid_reader.contract import (
-    MechPrepaidReaderContract,
-)
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
@@ -94,7 +91,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     LeaderboardWindow,
     LeaderboardWindowRank,
     NotRankedReason,
-    OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PerformanceStatsData,
@@ -119,19 +115,9 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 RESOLVED_STATUSES = frozenset(
     {BetStatus.WON.value, BetStatus.LOST.value, BetStatus.INVALID.value}
 )
-DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
-_ZERO_ADDRESS = (
-    "0x" + "0" * 40
-)  # placeholder used to disable off-chain deposit scanning
-
-# Upper bound on the ``eth_getLogs`` block range per cycle. Safely
-# below common public-provider caps (Alchemy / Infura ~10k). When an
-# agent has been offline long enough that the catchup range exceeds
-# this, subsequent cycles march the checkpoint forward one chunk at
-# a time until it reaches head — instead of the pre-fix behaviour
-# where the range grew unbounded and every scan hit the provider cap,
-# permanently freezing the checkpoint.
-OFFCHAIN_MAX_SCAN_RANGE = 5_000
+# A mech request with no reported charge (on-chain requests, rows from before
+# mechs reported charges, subgraph-sourced requests) costs the flat 0.01 USD.
+DEFAULT_MECH_FEE_USD = Decimal("0.01")
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
@@ -187,6 +173,54 @@ _RESIDUAL_TOLERANCE = 5
 # the drift in place moves one step up, so an agent whose fetched requests
 # and ``total`` genuinely disagree stops re-paginating its history daily.
 _RESIDUAL_REBUILD_BACKOFF_DAYS = (1, 7, 30)
+
+
+def _usd_amount(value: Any) -> Optional[Decimal]:
+    """Return a non-negative USD amount from a decoded JSON value, or ``None``.
+
+    Strings are parsed exactly (mech-analytics sends sub-cent charges as
+    strings); numbers go through ``str`` so a float keeps its printed value.
+
+    :param value: a value from a decoded JSON response
+    :return: the amount, or ``None`` when absent, not a number, negative or
+        not finite
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if not isinstance(value, (int, float, str)):
+        return None
+    try:
+        amount = Decimal(str(value))
+    except InvalidOperation:
+        return None
+    if not amount.is_finite() or amount < 0:
+        return None
+    return amount
+
+
+def _mech_request_cost_usd(request: dict) -> Decimal:
+    """Return what a subgraph-shaped mech request cost, in USD.
+
+    :param request: a mech request; ``chargeUsd`` is the charge the mech
+        reported, absent for on-chain and subgraph-sourced requests
+    :return: the reported charge, or ``DEFAULT_MECH_FEE_USD`` without one
+    """
+    charge = _usd_amount(request.get("chargeUsd"))
+    return DEFAULT_MECH_FEE_USD if charge is None else charge
+
+
+MechRequestCosts = Dict[Tuple[str, int], List[Decimal]]
+
+
+def _take_cost(costs: MechRequestCosts, key: Tuple[str, int]) -> Decimal:
+    """Remove and return the cost of one request with ``key``.
+
+    :param costs: each request's cost by ``(title, timestamp)``; modified
+    :param key: the request's ``(title, timestamp)``
+    :return: its cost, or ``DEFAULT_MECH_FEE_USD`` when none is known
+    """
+    known = costs.get(key)
+    return known.pop(0) if known else DEFAULT_MECH_FEE_USD
 
 
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
@@ -416,7 +450,15 @@ class FetchPerformanceSummaryBehaviour(
         # ``(title, timestamp)`` of each request counted in
         # ``_open_market_requests``; ``None`` until that count is computed.
         self._open_market_request_keys: Optional[List[Tuple[str, int]]] = None
+        # USD cost of the requests counted in ``_total_mech_requests``,
+        # ``_open_market_requests`` and ``_settled_mech_requests_count``;
+        # ``None`` alongside an unknown count.
+        self._total_mech_cost_usd: Optional[Decimal] = None
+        self._open_market_cost_usd: Optional[Decimal] = None
+        self._settled_mech_cost_usd: Optional[Decimal] = None
         self._mech_request_lookup: Optional[dict] = None
+        # Each fetched request's cost, keyed by ``(title, timestamp)``.
+        self._request_costs: MechRequestCosts = {}
         self._fetched_mech_requests: List[dict] = []
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
@@ -605,7 +647,7 @@ class FetchPerformanceSummaryBehaviour(
             # returns a zero-shaped body (not None), so a real 0 count
             # still caches correctly. Return ``None`` (not 0) so callers
             # short-circuit cost math this round instead of computing
-            # ``all_mech_costs = 0 * DEFAULT_MECH_FEE`` and reporting
+            # ``all_mech_costs = 0`` and reporting
             # inflated ROI.
             if usage is None:
                 self.context.logger.warning(
@@ -615,7 +657,18 @@ class FetchPerformanceSummaryBehaviour(
                 return None
             all_window = (usage.get("windows") or {}).get("all") or {}
             self._total_mech_requests = int(all_window.get("n_mech_requests") or 0)
-            self.context.logger.info(f"{self._total_mech_requests=}")
+            # ``mech_fee_usd`` is the real charges plus the flat fee for
+            # requests without one; a deployment that predates the field
+            # gets the flat fee for every request.
+            fee = _usd_amount(all_window.get("mech_fee_usd"))
+            self._total_mech_cost_usd = (
+                fee
+                if fee is not None
+                else self._total_mech_requests * DEFAULT_MECH_FEE_USD
+            )
+            self.context.logger.info(
+                f"{self._total_mech_requests=}, {self._total_mech_cost_usd=}"
+            )
             return self._total_mech_requests
 
         mech_sender = yield from self._fetch_mech_sender(
@@ -625,9 +678,12 @@ class FetchPerformanceSummaryBehaviour(
 
         if not mech_sender or mech_sender.get("totalMarketplaceRequests") is None:
             self._total_mech_requests = 0
+            self._total_mech_cost_usd = Decimal(0)
             return 0
 
         self._total_mech_requests = int(mech_sender["totalMarketplaceRequests"])
+        # The subgraph sees only on-chain requests, each at the flat fee.
+        self._total_mech_cost_usd = self._total_mech_requests * DEFAULT_MECH_FEE_USD
         self.context.logger.info(f"{self._total_mech_requests=}")
         return self._total_mech_requests
 
@@ -724,6 +780,7 @@ class FetchPerformanceSummaryBehaviour(
             if not open_markets:
                 self._open_market_requests = 0
                 self._open_market_request_keys = []
+                self._open_market_cost_usd = Decimal(0)
                 return 0
 
             # Get titles of open markets
@@ -735,13 +792,23 @@ class FetchPerformanceSummaryBehaviour(
 
         # Keep the requests for still-open markets, not just their count, so
         # the profit series holds back exactly the requests counted here.
+        open_requests = [
+            request
+            for request in last_four_days_requests
+            if self._mech_request_key(request)[0]
+            and self._mech_request_key(request)[0] in open_market_titles
+        ]
         self._open_market_request_keys = [
-            key
-            for key in map(self._mech_request_key, last_four_days_requests)
-            if key[0] and key[0] in open_market_titles
+            self._mech_request_key(request) for request in open_requests
         ]
         self._open_market_requests = len(self._open_market_request_keys)
-        self.context.logger.info(f"{self._open_market_requests=}")
+        self._open_market_cost_usd = sum(
+            (_mech_request_cost_usd(request) for request in open_requests),
+            Decimal(0),
+        )
+        self.context.logger.info(
+            f"{self._open_market_requests=}, {self._open_market_cost_usd=}"
+        )
         return self._open_market_requests
 
     def _calculate_settled_mech_requests(
@@ -765,6 +832,7 @@ class FetchPerformanceSummaryBehaviour(
         if total_mech_requests is None:
             return None
         if total_mech_requests == 0:
+            self._settled_mech_cost_usd = Decimal(0)
             return 0
 
         # Get open market requests (uses cache if available)
@@ -779,242 +847,39 @@ class FetchPerformanceSummaryBehaviour(
         if open_market_requests is None:
             return None
 
-        # where settled = Total - Open
+        # where settled = Total - Open, for the count and for the cost
+        self._settled_mech_cost_usd = max(
+            self._total_cost_usd(total_mech_requests)
+            - (
+                self._open_market_cost_usd
+                if self._open_market_cost_usd is not None
+                else open_market_requests * DEFAULT_MECH_FEE_USD
+            ),
+            Decimal(0),
+        )
         return total_mech_requests - open_market_requests
 
-    def _fetch_offchain_prepaid_wei(
-        self, safe_address: str
-    ) -> Generator[None, None, int]:
-        """Return the cumulative pre-deposit sum on the BalanceTracker for this Safe.
+    def _total_cost_usd(self, total_mech_requests: int) -> Decimal:
+        """Return the USD cost of every mech request the agent made.
 
-        Off-chain mech requests draw fees from a per-requester balance on
-        the ``BalanceTracker`` contract. Under pre-deposit-as-loss accounting,
-        every ``Deposit(account=safe, ..., amount)`` event on that contract
-        counts as spend the moment it lands on chain, because the tracker
-        exposes no requester-withdraw path — money committed is unrecoverable
-        regardless of consumption.
-
-        Under pre-deposit-as-loss the cached total is *irrevocable*: once
-        a deposit has been counted against ROI it stays counted, even if
-        the operator later flips ``use_offchain`` off or clears
-        ``balance_tracker_address``. So the cached total is read before
-        every gate, and every disabled/misconfigured bail returns
-        ``cached_total`` rather than ``0``. Zero-spend on-chain-only
-        agents still see ``0`` because ``cached_total`` defaults to ``0``
-        and the scan path never runs to inflate it.
-
-        On off-chain deployments the helper reads
-        ``Deposit(indexed account, indexed token, amount)`` events from the
-        last-scanned block cached in the performance summary JSON, sums new
-        entries into the running total, updates the checkpoint to the
-        current head block, and persists both fields under
-        ``offchain_deposits`` for the next cycle. On the very first run
-        (``last_scanned_block is None``) it seeds the checkpoint to the
-        current head block instead of sweeping history. This is a
-        deliberate policy: we only count deposits from the checkpoint
-        forward. Backfilling pre-checkpoint deposits is out of scope, and
-        starting from the current head also avoids RPC ``eth_getLogs``
-        block-range caps that some providers enforce.
-
-        The checkpoint advances to the *scanned* head every successful
-        cycle regardless of whether events matched. That upper bound is
-        resolved via ``get_block_number`` right before the log scan so a
-        deposit-quiet stretch can never grow the range until a provider
-        cap rejects it and freezes future accrual.
-
-        :param safe_address: the agent's own Safe address, used as the
-            ``account`` filter on the ``Deposit`` event.
-        :return: cumulative sum (in wei-scaled units) of every
-            ``BalanceTracker.Deposit`` credit to this Safe up to and
-            including the latest block scanned.
-        :yield: contract-API response(s) via the abstract-round-abci
-            base behaviour helpers.
+        :param total_mech_requests: the request count the cost belongs to
+        :return: the fetched cost, or the flat fee per request when none
+            was fetched alongside the count
         """
-        # Read cached_total BEFORE any gate so historical accrued spend
-        # under pre-deposit-as-loss stays counted even if the operator
-        # flips use_offchain off or clears the tracker address. Once
-        # counted, always counted.
-        #
-        # Source ``state`` from the raw-JSON re-read helper, not from the
-        # full-summary read. ``read_existing_performance_summary`` degrades
-        # to a fresh dataclass on ANY nested ``__post_init__`` raise
-        # (e.g. a rollback where a newer release added an
-        # ``Achievements`` sub-field that a downgraded reader can't
-        # validate). If we sourced ``state`` from that degraded summary,
-        # ``state.last_scanned_block`` would be ``None`` and the seed
-        # branch below would re-seed from head — wiping a still-valid
-        # on-disk checkpoint. Reading only the ``offchain_deposits``
-        # sub-dict leniently insulates this helper from sibling
-        # ``__post_init__`` failures.
-        state = (
-            self.shared_state.read_offchain_deposits_from_disk()
-            or OffchainDepositState()
-        )
-        cached_total = state.total_deposited_wei
+        if self._total_mech_cost_usd is not None:
+            return self._total_mech_cost_usd
+        return total_mech_requests * DEFAULT_MECH_FEE_USD
 
-        if not self.params.use_offchain:
-            # On-chain-only deployment (default for all production
-            # traders). cached_total is 0 for any agent that never enabled
-            # off-chain accounting, so ROI is bit-identical to pre-migration.
-            return cached_total
+    def _settled_cost_usd(self, settled_mech_requests: int) -> Decimal:
+        """Return the USD cost of the settled mech requests.
 
-        balance_tracker_address = self.params.balance_tracker_address
-        if (
-            not balance_tracker_address
-            or balance_tracker_address.lower() == _ZERO_ADDRESS
-        ):
-            # use_offchain=True but tracker address is missing or the
-            # zero-address placeholder — genuine operator misconfiguration
-            # (as opposed to on-chain-only agents, which the previous gate
-            # already caught). Warn loudly so this shows up in logs
-            # instead of silently freezing ROI at cached_total forever.
-            self.context.logger.warning(
-                "[Offchain Deposits] misconfigured: use_offchain=True but "
-                f"balance_tracker_address={balance_tracker_address!r}; "
-                "scan disabled — freezing ROI cost at cached total."
-            )
-            return cached_total
-
-        # Resolve current head block. Used both for the first-run seed
-        # and as the concrete upper bound / new checkpoint value on
-        # incremental scans, so the checkpoint advances to head every
-        # successful cycle regardless of whether events matched.
-        block_response = yield from self.get_ledger_api_response(
-            performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
-            ledger_callable="get_block_number",
-            chain_id=self.params.mech_chain_id,
-        )
-        if block_response.performative != LedgerApiMessage.Performative.STATE:
-            self.context.logger.warning(
-                "Failed to resolve head block for offchain-deposit scan "
-                f"(response: {block_response}); leaving cached total."
-            )
-            return cached_total
-
-        body = block_response.state.body
-        raw_head = body.get("get_block_number_result") if body is not None else None
-        # ``< 0`` (not ``<= 0``) so a legitimate genesis-block head on a
-        # fresh devnet/Hardhat chain is accepted, per the
-        # ``OffchainDepositState`` docstring. Coerce inside a
-        # try/except so a non-numeric ledger response degrades with a
-        # warning like every other malformed-input branch in this
-        # helper, rather than raising uncaught and crashing the
-        # behaviour (mirrors ``mech_interact_abci``'s
-        # ``_get_native_balance`` pattern).
-        try:
-            head_block = int(raw_head) if raw_head is not None else -1
-        except (TypeError, ValueError):
-            head_block = -1
-        if head_block < 0:
-            self.context.logger.warning(
-                "Offchain-deposit head-block read returned an invalid value "
-                f"({raw_head!r}); leaving checkpoint unchanged."
-            )
-            return cached_total
-
-        # First-run seed: don't sweep history from block 0. Policy: only
-        # deposits from the checkpoint forward count against ROI.
-        # Split-write via ``write_offchain_deposits_to_disk`` (see the
-        # sourcing note above and the model docstring): mid-cycle
-        # writes update only the ``offchain_deposits`` sub-dict on
-        # disk, so a fresh degraded summary read from another site
-        # can't cascade into wiping sibling fields at this write.
-        if state.last_scanned_block is None:
-            self.shared_state.write_offchain_deposits_to_disk(
-                OffchainDepositState(
-                    total_deposited_wei=0,
-                    last_scanned_block=head_block,
-                )
-            )
-            self.context.logger.info(
-                f"[Offchain Deposits] First run — seeded checkpoint to block "
-                f"{head_block}, cumulative total starts at 0."
-            )
-            return 0
-
-        # Subsequent runs: bound the scan range up front.
-        from_block = state.last_scanned_block + 1
-        if from_block > head_block:
-            # Chain hasn't moved past the checkpoint (short cycle interval
-            # or empty devnet). Nothing to scan; nothing to persist.
-            return cached_total
-
-        # Cap the scan range so an agent that has been offline for
-        # longer than the provider's ``eth_getLogs`` block-range cap
-        # (a Pearl laptop closed over a weekend, ~14h+ of Gnosis
-        # blocks) catches up in chunks over successive cycles rather
-        # than every scan hitting the cap and permanently freezing the
-        # checkpoint. Each cycle marches ``last_scanned_block`` forward
-        # by at most ``OFFCHAIN_MAX_SCAN_RANGE`` blocks until it reaches
-        # head.
-        to_block = min(head_block, from_block + OFFCHAIN_MAX_SCAN_RANGE - 1)
-
-        response = yield from self.get_contract_api_response(
-            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-            contract_address=balance_tracker_address,
-            contract_id=str(MechPrepaidReaderContract.contract_id),
-            contract_callable="get_deposit_events_for_requester",
-            requester=safe_address,
-            from_block=from_block,
-            to_block=to_block,
-            chain_id=self.params.mech_chain_id,
-        )
-        if response.performative != ContractApiMessage.Performative.STATE:
-            self.context.logger.warning(
-                "Failed to fetch BalanceTracker Deposit events "
-                f"(response: {response}); reusing cached offchain pre-deposit total."
-            )
-            return cached_total
-
-        body = response.state.body
-        entries = body.get("entries") if body is not None else None
-        if entries is None:
-            # Malformed STATE response: refuse to advance the checkpoint
-            # because doing so would silently skip past the requested
-            # scan range without counting its deposits.
-            self.context.logger.warning(
-                "Offchain-deposit scan returned malformed response "
-                f"(entries={entries!r}); leaving checkpoint and cached total unchanged."
-            )
-            return cached_total
-
-        # Aggregation lives here (not in the classmethod) by convention:
-        # contract classmethods return processed log entries; sum happens
-        # in the caller. Wrap the hard-index in
-        # ``(KeyError, TypeError, ValueError)`` so a shape drift on the
-        # entries wire format routes into the malformed-response branch
-        # instead of raising uncaught: the ``if response.performative
-        # != STATE`` gate above only catches API performatives, and with
-        # ``skill_exception_policy: stop_and_exit`` an unhandled skill
-        # exception terminates the whole agent — a harder failure than
-        # freezing the checkpoint.
-        try:
-            new_wei = sum(int(entry["amount"]) for entry in entries)
-        except (KeyError, TypeError, ValueError) as exc:
-            self.context.logger.warning(
-                "Offchain-deposit scan returned entries with unexpected "
-                f"shape ({exc!r}); leaving checkpoint and cached total unchanged."
-            )
-            return cached_total
-
-        # Checkpoint advances to the scanned upper bound every successful
-        # cycle, even with zero matches, so subsequent cycles start from
-        # ``to_block + 1`` (small range for a caught-up agent, bounded
-        # by ``OFFCHAIN_MAX_SCAN_RANGE`` for one still catching up)
-        # rather than re-scanning the same growing range every cycle.
-        total_wei = cached_total + new_wei
-        self.shared_state.write_offchain_deposits_to_disk(
-            OffchainDepositState(
-                total_deposited_wei=total_wei,
-                last_scanned_block=to_block,
-            )
-        )
-
-        self.context.logger.info(
-            f"[Offchain Deposits] cached={cached_total}, new_this_cycle={new_wei}, "
-            f"total={total_wei}, last_scanned_block={to_block}"
-        )
-        return total_wei
+        :param settled_mech_requests: the settled count the cost belongs to
+        :return: the computed cost, or the flat fee per request when none
+            was computed alongside the count
+        """
+        if self._settled_mech_cost_usd is not None:
+            return self._settled_mech_cost_usd
+        return settled_mech_requests * DEFAULT_MECH_FEE_USD
 
     def calculate_roi(
         self,
@@ -1103,52 +968,18 @@ class FetchPerformanceSummaryBehaviour(
             f"total_market_payout_usd={total_market_payout_usd:.6f}"
         )
 
-        # Convert mech costs from wei to native token, then treat as USD
-        # Fixed 0.01 fee per request (DEFAULT_MECH_FEE is scaled to 18 decimals)
-        settled_mech_costs_raw = settled_mech_requests * DEFAULT_MECH_FEE
-        settled_mech_costs_usd = settled_mech_costs_raw / WEI_IN_ETH
+        # What the settled requests cost, on-chain and off-chain alike.
+        settled_mech_costs_usd = float(self._settled_cost_usd(settled_mech_requests))
 
         self.context.logger.info(
-            f"[ROI Calculation] On-chain mech costs: "
+            f"[ROI Calculation] Mech costs: "
             f"settled_mech_requests={settled_mech_requests}, "
-            f"settled_mech_costs_raw={settled_mech_costs_raw}, "
             f"settled_mech_costs_usd={settled_mech_costs_usd:.6f}"
-        )
-
-        # Off-chain mech spend enters the cost formula only via cumulative
-        # BalanceTracker.Deposit events for the agent's own Safe. Under
-        # pre-deposit-as-loss accounting every ``depositFor`` counts as
-        # spent the moment it lands on chain (the tracker cannot refund).
-        # For an on-chain-only deployment this Safe never appears in a
-        # Deposit event, the helper returns 0, and the ROI number matches
-        # the pre-migration calculation exactly.
-        offchain_prepaid_wei = yield from self._fetch_offchain_prepaid_wei(
-            agent_safe_address
-        )
-        # Load-bearing invariant: the BalanceTracker's payment token must use
-        # the same smallest-unit scale as the trade-side ``token_divisor``
-        # picked above (USDC 6dp on Polymarket, wxDAI 18dp on Gnosis). This
-        # holds for both current deployments because trader/BalanceTracker
-        # share the chain-native payment token. If we ever add a
-        # BalanceTracker variant on a chain whose payment token has different
-        # decimals from the trade collateral, ``offchain_prepaid_usd`` will
-        # silently scale wrong — add an explicit
-        # ``balance_tracker_token_decimals`` to the config and derive the
-        # divisor from that instead of ``is_running_on_polymarket``.
-        offchain_prepaid_usd = offchain_prepaid_wei / token_divisor
-
-        self.context.logger.info(
-            f"[ROI Calculation] Off-chain pre-deposits: "
-            f"offchain_prepaid_wei={offchain_prepaid_wei}, "
-            f"offchain_prepaid_usd={offchain_prepaid_usd:.6f}"
         )
 
         # Calculate total costs in USD
         total_costs_usd = (
-            total_traded_settled_usd
-            + total_fees_settled_usd
-            + settled_mech_costs_usd
-            + offchain_prepaid_usd
+            total_traded_settled_usd + total_fees_settled_usd + settled_mech_costs_usd
         )
 
         self.context.logger.info(
@@ -1478,7 +1309,7 @@ class FetchPerformanceSummaryBehaviour(
             else max(total_mech_requests - open_mech_requests - placed_mech_requests, 0)
         )
 
-        all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
+        all_mech_costs_usd = float(self._total_cost_usd(total_mech_requests))
 
         # Use appropriate divisor based on platform
         # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
@@ -1489,16 +1320,16 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         # All-time funds used: traded + fees + ALL mech costs
-        all_time_funds_used = (total_traded + total_fees) / token_divisor + (
-            all_mech_costs / WEI_IN_ETH
-        )
+        all_time_funds_used = (
+            total_traded + total_fees
+        ) / token_divisor + all_mech_costs_usd
 
         # All-time profit: uses settled traded/fees and settled mech costs
         # Settled mech requests include both placed and unplaced mech calls (excluding open markets).
-        settled_mech_costs = settled_mech_requests * DEFAULT_MECH_FEE
+        settled_mech_costs_usd = float(self._settled_cost_usd(settled_mech_requests))
         all_time_profit = (
             total_payout - total_traded_settled - total_fees_settled
-        ) / token_divisor - (settled_mech_costs / WEI_IN_ETH)
+        ) / token_divisor - settled_mech_costs_usd
 
         # Calculate locked funds. Polymarket keeps its pre-existing
         # cash-flow-net formula (set up by #943). Omenstrat now uses a
@@ -1839,7 +1670,8 @@ class FetchPerformanceSummaryBehaviour(
         self,
         daily_stats: list,
         mech_request_lookup: Dict[str, List[int]],
-    ) -> Tuple[Dict[int, int], int, int]:
+        request_costs: Optional[MechRequestCosts] = None,
+    ) -> Tuple[Dict[int, int], int, int, Dict[int, Decimal]]:
         """Match mech requests to bet days using timestamps (last-before-bet via bisect).
 
         For each bet, consumes the last mech request with timestamp <= bet timestamp.
@@ -1850,14 +1682,21 @@ class FetchPerformanceSummaryBehaviour(
 
         :param daily_stats: List of daily profit statistics
         :param mech_request_lookup: Dictionary mapping question titles to sorted timestamp lists
-        :return: Tuple of (fees_by_day, placed_count, unplaced_count)
+        :param request_costs: each request's cost by ``(title, timestamp)``;
+            a request without one costs ``DEFAULT_MECH_FEE_USD``
+        :return: Tuple of (requests per day, placed_count, unplaced_count,
+            USD cost per day)
         """
         # Deep-copy timestamps so we can pop without mutating the original lookup
         remaining: Dict[str, List[int]] = {
             title: list(timestamps) for title, timestamps in mech_request_lookup.items()
         }
+        costs: MechRequestCosts = {
+            key: list(values) for key, values in (request_costs or {}).items()
+        }
 
         fees_by_day: Dict[int, int] = {}
+        costs_by_day: Dict[int, Decimal] = {}
         placed_count = 0
 
         # Build (title, bet_ts, day_ts) triples from bet-level data when available
@@ -1891,19 +1730,25 @@ class FetchPerformanceSummaryBehaviour(
             if ts_list:
                 idx = bisect.bisect_right(ts_list, bet_ts) - 1
                 if idx >= 0:
-                    ts_list.pop(idx)
+                    mech_ts = ts_list.pop(idx)
                     fees_by_day[day_ts] = fees_by_day.get(day_ts, 0) + 1
+                    costs_by_day[day_ts] = costs_by_day.get(
+                        day_ts, Decimal(0)
+                    ) + _take_cost(costs, (title, mech_ts))
                     placed_count += 1
 
         # Remaining unconsumed requests are unplaced — assign to mech request's own day
         unplaced_count = 0
-        for ts_list in remaining.values():
+        for title, ts_list in remaining.items():
             for mech_ts in ts_list:
                 mech_day = (mech_ts // SECONDS_PER_DAY) * SECONDS_PER_DAY
                 fees_by_day[mech_day] = fees_by_day.get(mech_day, 0) + 1
+                costs_by_day[mech_day] = costs_by_day.get(
+                    mech_day, Decimal(0)
+                ) + _take_cost(costs, (title, mech_ts))
                 unplaced_count += 1
 
-        return fees_by_day, placed_count, unplaced_count
+        return fees_by_day, placed_count, unplaced_count, costs_by_day
 
     @staticmethod
     def _mech_request_key(request: dict) -> Tuple[str, int]:
@@ -1942,13 +1787,49 @@ class FetchPerformanceSummaryBehaviour(
     @staticmethod
     def _as_pending_mech_requests(
         held_back: List[Tuple[str, int]],
+        request_costs: MechRequestCosts,
     ) -> List[Dict[str, Any]]:
         """Serialise held-back requests for ``ProfitOverTimeData.pending_mech_requests``.
 
         :param held_back: ``(title, timestamp)`` of each held-back request
-        :return: the persisted ``{"title", "timestamp"}`` entries
+        :param request_costs: each request's cost by ``(title, timestamp)``;
+            the held-back requests' costs are removed from it
+        :return: the persisted ``{"title", "timestamp", "cost_usd"}`` entries
         """
-        return [{"title": title, "timestamp": ts} for title, ts in held_back]
+        return [
+            {
+                "title": title,
+                "timestamp": ts,
+                "cost_usd": str(_take_cost(request_costs, (title, ts))),
+            }
+            for title, ts in held_back
+        ]
+
+    @classmethod
+    def _costs_by_key(
+        cls,
+        mech_requests: List[dict],
+        pending: Optional[List[Dict[str, Any]]] = None,
+    ) -> MechRequestCosts:
+        """Return each request's cost keyed by ``(title, timestamp)``.
+
+        :param mech_requests: subgraph-shaped mech requests
+        :param pending: persisted held-back entries, charged at their stored
+            ``cost_usd`` (the flat fee for entries stored without one)
+        :return: costs in request order per key
+        """
+        costs: MechRequestCosts = {}
+        for entry in pending or []:
+            cost = _usd_amount(entry.get("cost_usd"))
+            key = (entry["title"], int(entry["timestamp"]))
+            costs.setdefault(key, []).append(
+                DEFAULT_MECH_FEE_USD if cost is None else cost
+            )
+        for request in mech_requests:
+            key = cls._mech_request_key(request)
+            if key[1]:
+                costs.setdefault(key, []).append(_mech_request_cost_usd(request))
+        return costs
 
     def _recent_request_ids(
         self, requests: List[dict], watermark: int
@@ -1970,17 +1851,36 @@ class FetchPerformanceSummaryBehaviour(
             }
         )
 
+    @staticmethod
+    def _stored_mech_cost(point: ProfitDataPoint) -> Decimal:
+        """Return a stored day's mech cost in USD.
+
+        :param point: a persisted profit data point
+        :return: its stored cost, or the flat fee per request for a point
+            stored before costs were recorded
+        """
+        if point.daily_mech_cost is None:
+            return point.daily_mech_requests * DEFAULT_MECH_FEE_USD
+        return Decimal(str(point.daily_mech_cost))
+
     def _apply_mech_fees(
-        self, fees_by_day: Dict[int, int], date_timestamp: int
+        self,
+        fees_by_day: Dict[int, int],
+        date_timestamp: int,
+        costs_by_day: Optional[Dict[int, Decimal]] = None,
     ) -> Tuple[float, int]:
-        """Look up pre-computed mech fee count for a day.
+        """Look up a day's pre-computed mech requests and their cost.
 
         :param fees_by_day: Pre-computed mapping of day timestamp to mech request count
         :param date_timestamp: The day timestamp to look up
-        :return: Tuple of (mech_fees_in_eth, mech_request_count)
+        :param costs_by_day: Pre-computed USD cost per day; without it each
+            request costs ``DEFAULT_MECH_FEE_USD``
+        :return: Tuple of (mech fees in USD, mech_request_count)
         """
         count = fees_by_day.get(date_timestamp, 0)
-        return count * (DEFAULT_MECH_FEE / WEI_IN_ETH), count
+        if costs_by_day is None:
+            return float(count * DEFAULT_MECH_FEE_USD), count
+        return float(costs_by_day.get(date_timestamp, Decimal(0))), count
 
     def _build_mech_request_lookup(
         self, agent_safe_address: str
@@ -2031,6 +1931,7 @@ class FetchPerformanceSummaryBehaviour(
         )
         self._mech_request_lookup = lookup
         self._fetched_mech_requests = all_mech_requests
+        self._request_costs = self._costs_by_key(all_mech_requests)
         return lookup
 
     def _build_profit_over_time_data(
@@ -2260,9 +2161,19 @@ class FetchPerformanceSummaryBehaviour(
             ]
         )
 
+        request_costs: MechRequestCosts = {
+            key: list(values) for key, values in self._request_costs.items()
+        }
+        pending_mech_requests = self._as_pending_mech_requests(held_back, request_costs)
+
         # Timestamp-based mech-to-bet attribution
-        fees_by_day, placed_count, unplaced_count = self._match_mech_requests_to_days(
-            daily_stats, mech_request_lookup
+        (
+            fees_by_day,
+            placed_count,
+            unplaced_count,
+            costs_by_day,
+        ) = self._match_mech_requests_to_days(
+            daily_stats, mech_request_lookup, request_costs
         )
         self._placed_mech_requests_count = placed_count
 
@@ -2292,7 +2203,7 @@ class FetchPerformanceSummaryBehaviour(
 
             # Look up pre-computed mech fees for this day
             mech_fees, daily_mech_count = self._apply_mech_fees(
-                fees_by_day, date_timestamp
+                fees_by_day, date_timestamp, costs_by_day
             )
 
             daily_profit_net = daily_profit_raw - mech_fees
@@ -2306,6 +2217,7 @@ class FetchPerformanceSummaryBehaviour(
                     daily_profit=daily_profit_net,
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
+                    daily_mech_cost=mech_fees,
                 )
             )
 
@@ -2317,7 +2229,7 @@ class FetchPerformanceSummaryBehaviour(
             date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )
-            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            mech_fees = float(costs_by_day[mech_day_ts])
             data_points.append(
                 ProfitDataPoint(
                     date=date_str,
@@ -2326,6 +2238,7 @@ class FetchPerformanceSummaryBehaviour(
                     daily_profit=-mech_fees,
                     cumulative_profit=0.0,  # recomputed below
                     daily_mech_requests=count,
+                    daily_mech_cost=mech_fees,
                 )
             )
 
@@ -2359,7 +2272,7 @@ class FetchPerformanceSummaryBehaviour(
             includes_unplaced_mech_fees=True,
             last_mech_timestamp=last_mech_timestamp,
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
-            pending_mech_requests=self._as_pending_mech_requests(held_back),
+            pending_mech_requests=pending_mech_requests,
             last_residual_rebuild_ts=last_residual_rebuild_ts,
             recent_mech_request_ids=self._recent_request_ids(
                 self._fetched_mech_requests, last_mech_timestamp
@@ -2512,9 +2425,19 @@ class FetchPerformanceSummaryBehaviour(
             )
             return existing_data
 
+        request_costs = self._costs_by_key(
+            new_mech_requests, existing_data.pending_mech_requests
+        )
+        pending_mech_requests = self._as_pending_mech_requests(held_back, request_costs)
+
         # Timestamp-based mech-to-bet attribution for new stats
-        fees_by_day, placed_delta, unplaced_delta = self._match_mech_requests_to_days(
-            filtered_daily_stats, mech_request_lookup
+        (
+            fees_by_day,
+            placed_delta,
+            unplaced_delta,
+            costs_by_day,
+        ) = self._match_mech_requests_to_days(
+            filtered_daily_stats, mech_request_lookup, request_costs
         )
 
         # Use persisted placed count as base (may be zero after restart)
@@ -2529,6 +2452,7 @@ class FetchPerformanceSummaryBehaviour(
         # with the ``incoming_days`` membership test above and with the
         # per-day pop below, whatever exact timestamps the two sides use.
         carry_by_day_idx: Dict[int, int] = {}
+        carry_cost_by_day_idx: Dict[int, Decimal] = {}
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
@@ -2539,6 +2463,7 @@ class FetchPerformanceSummaryBehaviour(
                 # construction (both derived from the same last data
                 # point's timestamp).
                 carry_by_day_idx[last_dp_day] = last_dp.daily_mech_requests
+                carry_cost_by_day_idx[last_dp_day] = self._stored_mech_cost(last_dp)
                 new_data_points.pop()
         cumulative_profit = (
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
@@ -2565,7 +2490,12 @@ class FetchPerformanceSummaryBehaviour(
             fresh_count = fees_by_day.get(date_timestamp, 0)
             carried = carry_by_day_idx.pop(date_timestamp // SECONDS_PER_DAY, 0)
             daily_mech_count = fresh_count + carried
-            mech_fees = daily_mech_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            carried_cost = carry_cost_by_day_idx.pop(
+                date_timestamp // SECONDS_PER_DAY, Decimal(0)
+            )
+            mech_fees = float(
+                costs_by_day.get(date_timestamp, Decimal(0)) + carried_cost
+            )
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
@@ -2579,6 +2509,7 @@ class FetchPerformanceSummaryBehaviour(
                     daily_profit=daily_profit_net,
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
+                    daily_mech_cost=mech_fees,
                 )
             )
 
@@ -2598,22 +2529,21 @@ class FetchPerformanceSummaryBehaviour(
             existing_dp = existing_by_ts.get(mech_day_ts)
             if existing_dp is not None:
                 old_count = existing_dp.daily_mech_requests
-                old_fees = old_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+                old_cost = self._stored_mech_cost(existing_dp)
                 # Legacy points (persisted before ``daily_profit_raw`` was
                 # added) leave the field ``None``. Reconstruct it from the
                 # stored net so the merge does not silently zero the day's
                 # gross profit.
                 raw = existing_dp.daily_profit_raw
                 if raw is None:
-                    raw = existing_dp.daily_profit + old_fees
+                    raw = existing_dp.daily_profit + float(old_cost)
                     existing_dp.daily_profit_raw = raw
                 existing_dp.daily_mech_requests = old_count + count
-                merged_fees = existing_dp.daily_mech_requests * (
-                    DEFAULT_MECH_FEE / WEI_IN_ETH
-                )
+                merged_fees = float(old_cost + costs_by_day[mech_day_ts])
+                existing_dp.daily_mech_cost = merged_fees
                 existing_dp.daily_profit = raw - merged_fees
                 continue
-            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            mech_fees = float(costs_by_day[mech_day_ts])
             new_data_points.append(
                 ProfitDataPoint(
                     date=date_str,
@@ -2622,6 +2552,7 @@ class FetchPerformanceSummaryBehaviour(
                     daily_profit=-mech_fees,
                     cumulative_profit=0.0,  # recomputed below
                     daily_mech_requests=count,
+                    daily_mech_cost=mech_fees,
                 )
             )
 
@@ -2681,7 +2612,6 @@ class FetchPerformanceSummaryBehaviour(
         last_mech_timestamp = max(
             [existing_data.last_mech_timestamp] + [ts for _, ts in fetched_keys]
         )
-        pending_mech_requests = self._as_pending_mech_requests(held_back)
 
         # If we only reprocessed the last day and nothing changed (profits AND mech counts), skip writing.
         if (
@@ -2861,19 +2791,8 @@ class FetchPerformanceSummaryBehaviour(
             self.shared_state.read_activity_goal_from_disk()
         )
 
-        # Preserve ``offchain_deposits`` via a raw-JSON re-read that
-        # bypasses ``AgentPerformanceSummary.__post_init__`` on sibling
-        # fields. ``_fetch_offchain_prepaid_wei`` writes this state
-        # directly to disk via ``overwrite_performance_summary`` earlier
-        # in the cycle, but ``_fetch_agent_performance_summary`` rebuilds
-        # this summary without the field (defaults to ``None``), and
-        # ``existing_data`` above can silently be a fresh degraded summary
-        # (``offchain_deposits=None``) whenever an *unrelated* nested
-        # ``__post_init__`` — e.g. corrupt Achievements or
-        # PredictionHistory — raised inside
-        # ``read_existing_performance_summary``. Reading directly and
-        # leniently means a bad sibling can't cascade into wiping the
-        # irreversible ``total_deposited_wei``.
+        # Keep a stored ``offchain_deposits`` (no longer updated): the rebuilt
+        # summary omits it, so re-read it leniently from disk.
         disk_offchain = self.shared_state.read_offchain_deposits_from_disk()
         if disk_offchain is not None:
             agent_performance_summary.offchain_deposits = disk_offchain

@@ -295,6 +295,24 @@ class TestProfitOverTimeData:
         assert pot.data_points[0].date == "2024-01-01"
         assert pot.data_points[1].daily_profit == 5.0
 
+    @pytest.mark.parametrize(
+        ("stored", "expected"), [({}, None), ({"daily_mech_cost": 0.0731}, 0.0731)]
+    )
+    def test_points_load_with_and_without_a_stored_mech_cost(
+        self, stored: Dict[str, Any], expected: Optional[float]
+    ) -> None:
+        """Points stored before mech costs were recorded load with ``None``."""
+        point = {
+            "date": "2024-01-01",
+            "timestamp": 1704067200,
+            "daily_profit": 1.0,
+            "cumulative_profit": 1.0,
+            "daily_mech_requests": 3,
+            **stored,
+        }
+        pot = ProfitOverTimeData(last_updated=1704067200, total_days=1, data_points=[point])  # type: ignore[list-item]
+        assert pot.data_points[0].daily_mech_cost == expected
+
     def test_empty_data_points_no_conversion(self) -> None:
         """Empty data_points list requires no conversion."""
         pot = ProfitOverTimeData(last_updated=1704153600, total_days=0)
@@ -483,6 +501,15 @@ class TestAgentPerformanceSummary:
         assert s.prediction_history is None
         assert s.profit_over_time is None
         assert s.achievements is None
+
+    def test_summary_stored_with_offchain_deposits_still_loads(self) -> None:
+        """A summary written while deposits were tracked loads and keeps them."""
+        s = AgentPerformanceSummary(
+            offchain_deposits={"total_deposited_wei": 5, "last_scanned_block": 9}  # type: ignore[arg-type]
+        )
+        assert s.offchain_deposits == OffchainDepositState(
+            total_deposited_wei=5, last_scanned_block=9
+        )
 
     def test_post_init_converts_agent_details_dict(self) -> None:
         """__post_init__ converts agent_details dict to AgentDetails."""
@@ -1265,140 +1292,6 @@ class TestSharedState:
 
         assert state.read_achievements_from_disk() is None
         state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
-
-    def test_write_offchain_deposits_preserves_sibling_fields(
-        self, tmp_path: Path
-    ) -> None:
-        """Split-write must update only ``offchain_deposits`` and leave siblings on disk untouched.
-
-        Regression against the write-side of the sibling-corruption
-        cascade. If ``_fetch_offchain_prepaid_wei`` wrote the whole
-        summary via ``overwrite_performance_summary`` and the paired
-        summary read had degraded to a fresh dataclass (any nested
-        ``__post_init__`` raise), sibling fields like ``achievements``
-        and ``prediction_history`` would be wiped mid-cycle. The split
-        write reads the raw JSON, updates the sub-dict, writes back —
-        so unrelated on-disk state survives.
-
-        :param tmp_path: pytest-supplied tmp directory used as the store path.
-        """
-        state = self._make_state()
-
-        mock_params = MagicMock()
-        mock_params.store_path = tmp_path
-        state.context.params = mock_params  # type: ignore[attr-defined]
-
-        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        # Seed the file with real data across several fields, including
-        # a stale ``offchain_deposits`` that the split write will
-        # overwrite. Everything else must round-trip.
-        initial = {
-            "timestamp": 1_700_000_000,
-            "agent_behavior": "observing",
-            "prediction_history": {
-                "total_predictions": 42,
-                "stored_count": 42,
-                "last_updated": 1_700_000_000,
-                "items": [],
-            },
-            "achievements": {"items": {}},
-            "offchain_deposits": {
-                "total_deposited_wei": 100,
-                "last_scanned_block": 50,
-            },
-        }
-        with open(file_path, "w") as f:
-            json.dump(initial, f)
-
-        state.write_offchain_deposits_to_disk(
-            OffchainDepositState(total_deposited_wei=999, last_scanned_block=200)
-        )
-
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        # New offchain_deposits.
-        assert data["offchain_deposits"] == {
-            "total_deposited_wei": 999,
-            "last_scanned_block": 200,
-        }
-        # Siblings untouched.
-        assert data["timestamp"] == 1_700_000_000
-        assert data["agent_behavior"] == "observing"
-        assert data["prediction_history"] == initial["prediction_history"]
-        assert data["achievements"] == initial["achievements"]
-
-    def test_write_offchain_deposits_writes_minimal_file_when_missing(
-        self, tmp_path: Path
-    ) -> None:
-        """First-run split-write when no summary file exists yet.
-
-        The operator has just enabled off-chain accounting and the
-        seed branch fires before any other write has produced a
-        summary. The split-write helper must create a minimal
-        ``{"offchain_deposits": ...}`` file rather than refusing
-        because no file exists — the next cycle-end
-        ``_save_agent_performance_summary`` will fill in the siblings.
-
-        :param tmp_path: pytest-supplied tmp directory used as the store path.
-        """
-        state = self._make_state()
-        mock_params = MagicMock()
-        mock_params.store_path = tmp_path
-        state.context.params = mock_params  # type: ignore[attr-defined]
-
-        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        assert not file_path.exists()
-
-        state.write_offchain_deposits_to_disk(
-            OffchainDepositState(total_deposited_wei=0, last_scanned_block=12345)
-        )
-
-        assert file_path.exists()
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        assert data == {
-            "offchain_deposits": {
-                "total_deposited_wei": 0,
-                "last_scanned_block": 12345,
-            }
-        }
-
-    def test_write_offchain_deposits_recovers_from_corrupt_json(
-        self, tmp_path: Path
-    ) -> None:
-        """A truncated / malformed JSON file must not block the checkpoint write.
-
-        If the previous ``_save_agent_performance_summary`` write was
-        interrupted (docker stop -t 0, OOM, disk full) and left the
-        file truncated, the helper still needs to persist the mid-cycle
-        checkpoint — otherwise ROI cost state gets permanently
-        under-counted for that cycle. Sibling recovery is out of scope
-        for this write: the atomic ``_save`` at cycle-end will rebuild
-        siblings from live data.
-
-        :param tmp_path: pytest-supplied tmp directory used as the store path.
-        """
-        state = self._make_state()
-        mock_params = MagicMock()
-        mock_params.store_path = tmp_path
-        state.context.params = mock_params  # type: ignore[attr-defined]
-
-        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        with open(file_path, "w") as f:
-            f.write('{"offchain_deposits": {"total_deposited_wei":')  # truncated
-
-        state.write_offchain_deposits_to_disk(
-            OffchainDepositState(total_deposited_wei=777, last_scanned_block=42)
-        )
-
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        assert data == {
-            "offchain_deposits": {
-                "total_deposited_wei": 777,
-                "last_scanned_block": 42,
-            }
-        }
 
     def test_overwrite_performance_summary(self, tmp_path: Path) -> None:
         """overwrite_performance_summary writes JSON to file."""

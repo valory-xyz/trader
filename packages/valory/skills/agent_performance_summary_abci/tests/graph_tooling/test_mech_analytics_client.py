@@ -324,6 +324,23 @@ class TestRowsAsSubgraphMechRequests:
         }
         assert adapted[0]["blockTimestamp"] > 0
 
+    @pytest.mark.parametrize("charge_usd", ["0.0073", "0", None])
+    def test_charge_is_carried_as_served(self, charge_usd: Optional[str]) -> None:
+        """The reported charge rides along unchanged, ``None`` when the row has none."""
+        rows = [
+            {
+                "question_title": "Q",
+                "requested_at": "2026-07-10T12:00:00Z",
+                "charge_usd": charge_usd,
+            }
+        ]
+        assert rows_as_subgraph_mech_requests(rows)[0]["chargeUsd"] == charge_usd
+
+    def test_missing_charge_field_maps_to_none(self) -> None:
+        """A row from a deployment without ``charge_usd`` carries no charge."""
+        rows = [{"question_title": "Q", "requested_at": "2026-07-10T12:00:00Z"}]
+        assert rows_as_subgraph_mech_requests(rows)[0]["chargeUsd"] is None
+
     def test_null_title_maps_to_parsedrequest_none(self) -> None:
         """Null title maps to parsedrequest none."""
         # ``parsedRequest: None`` matches the "no match" semantics the
