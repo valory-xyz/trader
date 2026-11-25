@@ -24,6 +24,7 @@ import platform
 import stat
 import threading
 from dataclasses import asdict
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -312,6 +313,28 @@ class TestProfitOverTimeData:
         }
         pot = ProfitOverTimeData(last_updated=1704067200, total_days=1, data_points=[point])  # type: ignore[list-item]
         assert pot.data_points[0].daily_mech_cost == expected
+
+    @pytest.mark.parametrize(
+        ("stored_cost", "expected"),
+        [
+            (0.0, Decimal(0)),
+            (0.0042, Decimal("0.0042")),
+            (None, Decimal("0.03")),
+        ],
+    )
+    def test_point_mech_cost_is_the_stored_cost_else_the_flat_fee(
+        self, stored_cost: Optional[float], expected: Decimal
+    ) -> None:
+        """A stored cost, zero included, is kept; only an unrecorded one is flat."""
+        point = ProfitDataPoint(
+            date="2024-01-01",
+            timestamp=1704067200,
+            daily_profit=1.0,
+            cumulative_profit=1.0,
+            daily_mech_requests=3,
+            daily_mech_cost=stored_cost,
+        )
+        assert point.mech_cost_usd == expected
 
     def test_empty_data_points_no_conversion(self) -> None:
         """Empty data_points list requires no conversion."""

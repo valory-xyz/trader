@@ -183,9 +183,7 @@ def _usd_amount(value: Any) -> Optional[Decimal]:
     :return: the amount, or ``None`` when absent, not a number, negative or
         not finite
     """
-    if value is None or isinstance(value, bool):
-        return None
-    if not isinstance(value, (int, float, str)):
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         return None
     try:
         amount = Decimal(str(value))
@@ -656,15 +654,10 @@ class FetchPerformanceSummaryBehaviour(
             # ``mech_fee_usd`` is the real charges plus the flat fee for
             # requests without one; a deployment that predates the field
             # gets the flat fee for every request.
-            raw_fee = all_window.get("mech_fee_usd")
-            fee = _usd_amount(raw_fee)
-            if fee is None and raw_fee is not None:
-                self.context.logger.warning(
-                    f"mech-analytics /requester served an unusable "
-                    f"mech_fee_usd={raw_fee!r}; charging the flat fee per request"
-                )
-            self._total_mech_cost_usd = _cost_or_flat_fee(
-                fee, self._total_mech_requests
+            self._total_mech_cost_usd = self._reported_cost_or_flat_fee(
+                all_window.get("mech_fee_usd"),
+                self._total_mech_requests,
+                "mech-analytics /requester mech_fee_usd",
             )
             self.context.logger.info(
                 f"{self._total_mech_requests=}, {self._total_mech_cost_usd=}"
@@ -847,11 +840,16 @@ class FetchPerformanceSummaryBehaviour(
             return None
 
         # where settled = Total - Open, for the count and for the cost
-        self._settled_mech_cost_usd = max(
-            _cost_or_flat_fee(self._total_mech_cost_usd, total_mech_requests)
-            - _cost_or_flat_fee(self._open_market_cost_usd, open_market_requests),
-            Decimal(0),
-        )
+        total_cost = _cost_or_flat_fee(self._total_mech_cost_usd, total_mech_requests)
+        open_cost = _cost_or_flat_fee(self._open_market_cost_usd, open_market_requests)
+        if total_cost < open_cost:
+            self.context.logger.warning(
+                f"Total mech cost {total_cost} ({total_mech_requests} requests) "
+                f"is below the open-market cost {open_cost} "
+                f"({open_market_requests} requests); counting the settled "
+                "mech cost as 0"
+            )
+        self._settled_mech_cost_usd = max(total_cost - open_cost, Decimal(0))
         return total_mech_requests - open_market_requests
 
     def calculate_roi(
@@ -1673,7 +1671,7 @@ class FetchPerformanceSummaryBehaviour(
             key: list(values) for key, values in request_costs.items()
         }
 
-        fees_by_day: Dict[int, int] = {}
+        requests_by_day: Dict[int, int] = {}
         costs_by_day: Dict[int, Decimal] = {}
         placed_count = 0
 
@@ -1709,7 +1707,7 @@ class FetchPerformanceSummaryBehaviour(
                 idx = bisect.bisect_right(ts_list, bet_ts) - 1
                 if idx >= 0:
                     mech_ts = ts_list.pop(idx)
-                    fees_by_day[day_ts] = fees_by_day.get(day_ts, 0) + 1
+                    requests_by_day[day_ts] = requests_by_day.get(day_ts, 0) + 1
                     costs_by_day[day_ts] = costs_by_day.get(
                         day_ts, Decimal(0)
                     ) + _take_cost(costs, (title, mech_ts))
@@ -1720,13 +1718,13 @@ class FetchPerformanceSummaryBehaviour(
         for title, ts_list in remaining.items():
             for mech_ts in ts_list:
                 mech_day = (mech_ts // SECONDS_PER_DAY) * SECONDS_PER_DAY
-                fees_by_day[mech_day] = fees_by_day.get(mech_day, 0) + 1
+                requests_by_day[mech_day] = requests_by_day.get(mech_day, 0) + 1
                 costs_by_day[mech_day] = costs_by_day.get(
                     mech_day, Decimal(0)
                 ) + _take_cost(costs, (title, mech_ts))
                 unplaced_count += 1
 
-        return fees_by_day, placed_count, unplaced_count, costs_by_day
+        return requests_by_day, placed_count, unplaced_count, costs_by_day
 
     @staticmethod
     def _mech_request_key(request: dict) -> Tuple[str, int]:
@@ -1813,14 +1811,28 @@ class FetchPerformanceSummaryBehaviour(
             reported, absent for on-chain and subgraph-sourced requests
         :return: the reported charge, or the flat fee without a usable one
         """
-        raw_charge = request.get("chargeUsd")
-        charge = _usd_amount(raw_charge)
-        if charge is None and raw_charge is not None:
+        return self._reported_cost_or_flat_fee(
+            request.get("chargeUsd"),
+            1,
+            f"chargeUsd of mech request {request.get('requestId')!r}",
+        )
+
+    def _reported_cost_or_flat_fee(
+        self, raw: Any, request_count: int, source: str
+    ) -> Decimal:
+        """Return a reported USD cost, or the flat fee when it is absent or unusable.
+
+        :param raw: the reported value from a decoded JSON response
+        :param request_count: the number of requests the cost belongs to
+        :param source: what reported the value, for the warning
+        :return: the reported cost, or the flat fee for ``request_count`` requests
+        """
+        cost = _usd_amount(raw)
+        if cost is None and raw is not None:
             self.context.logger.warning(
-                f"Mech request {request.get('requestId')!r} has an unusable "
-                f"chargeUsd={raw_charge!r}; charging the flat fee"
+                f"Unusable {source}={raw!r}; charging the flat fee"
             )
-        return _cost_or_flat_fee(charge, 1)
+        return _cost_or_flat_fee(cost, request_count)
 
     def _recent_request_ids(
         self, requests: List[dict], watermark: int
@@ -1844,18 +1856,19 @@ class FetchPerformanceSummaryBehaviour(
 
     def _apply_mech_fees(
         self,
-        fees_by_day: Dict[int, int],
+        requests_by_day: Dict[int, int],
         date_timestamp: int,
         costs_by_day: Dict[int, Decimal],
     ) -> Tuple[float, int]:
         """Look up a day's pre-computed mech requests and their cost.
 
-        :param fees_by_day: Pre-computed mapping of day timestamp to mech request count
+        :param requests_by_day: Pre-computed mapping of day timestamp to mech
+            request count
         :param date_timestamp: The day timestamp to look up
         :param costs_by_day: Pre-computed USD cost per day
         :return: Tuple of (mech fees in USD, mech_request_count)
         """
-        count = fees_by_day.get(date_timestamp, 0)
+        count = requests_by_day.get(date_timestamp, 0)
         return float(costs_by_day.get(date_timestamp, Decimal(0))), count
 
     def _build_mech_request_lookup(
@@ -2144,7 +2157,7 @@ class FetchPerformanceSummaryBehaviour(
 
         # Timestamp-based mech-to-bet attribution
         (
-            fees_by_day,
+            requests_by_day,
             placed_count,
             unplaced_count,
             costs_by_day,
@@ -2179,7 +2192,7 @@ class FetchPerformanceSummaryBehaviour(
 
             # Look up pre-computed mech fees for this day
             mech_fees, daily_mech_count = self._apply_mech_fees(
-                fees_by_day, date_timestamp, costs_by_day
+                requests_by_day, date_timestamp, costs_by_day
             )
 
             daily_profit_net = daily_profit_raw - mech_fees
@@ -2200,8 +2213,8 @@ class FetchPerformanceSummaryBehaviour(
         # R2: Emit data points for mech-only days (unplaced requests on days
         # with no bets).  These costs would otherwise be silently lost.
         visited_days = {int(stat["date"]) for stat in daily_stats if "date" in stat}
-        for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
-            count = fees_by_day[mech_day_ts]
+        for mech_day_ts in sorted(requests_by_day.keys() - visited_days):
+            count = requests_by_day[mech_day_ts]
             date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )
@@ -2408,7 +2421,7 @@ class FetchPerformanceSummaryBehaviour(
 
         # Timestamp-based mech-to-bet attribution for new stats
         (
-            fees_by_day,
+            requests_by_day,
             placed_delta,
             unplaced_delta,
             costs_by_day,
@@ -2423,12 +2436,11 @@ class FetchPerformanceSummaryBehaviour(
         new_data_points = list(existing_data.data_points)  # Copy existing points
         # Preserve the popped last day's mech attributions so that they
         # accumulate across ticks rather than being overwritten by the
-        # single-slice ``fees_by_day`` produced by this run. Keyed by
+        # single-slice ``requests_by_day`` produced by this run. Keyed by
         # day-index (``timestamp // SECONDS_PER_DAY``) so it lines up
         # with the ``incoming_days`` membership test above and with the
         # per-day pop below, whatever exact timestamps the two sides use.
-        carry_by_day_idx: Dict[int, int] = {}
-        carry_cost_by_day_idx: Dict[int, Decimal] = {}
+        carry_by_day_idx: Dict[int, Tuple[int, Decimal]] = {}
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
@@ -2438,8 +2450,10 @@ class FetchPerformanceSummaryBehaviour(
                 # earlier, and ``last_point_day == last_dp_day`` by
                 # construction (both derived from the same last data
                 # point's timestamp).
-                carry_by_day_idx[last_dp_day] = last_dp.daily_mech_requests
-                carry_cost_by_day_idx[last_dp_day] = last_dp.mech_cost_usd
+                carry_by_day_idx[last_dp_day] = (
+                    last_dp.daily_mech_requests,
+                    last_dp.mech_cost_usd,
+                )
                 new_data_points.pop()
         cumulative_profit = (
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
@@ -2461,14 +2475,13 @@ class FetchPerformanceSummaryBehaviour(
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Combine this run's fresh attributions with the popped day's
-            # stored count. Direct ``fees_by_day`` lookup avoids the
+            # stored count. Direct ``requests_by_day`` lookup avoids the
             # discarded ``mech_fees`` return from ``_apply_mech_fees``.
-            fresh_count = fees_by_day.get(date_timestamp, 0)
-            carried = carry_by_day_idx.pop(date_timestamp // SECONDS_PER_DAY, 0)
-            daily_mech_count = fresh_count + carried
-            carried_cost = carry_cost_by_day_idx.pop(
-                date_timestamp // SECONDS_PER_DAY, Decimal(0)
+            fresh_count = requests_by_day.get(date_timestamp, 0)
+            carried, carried_cost = carry_by_day_idx.pop(
+                date_timestamp // SECONDS_PER_DAY, (0, Decimal(0))
             )
+            daily_mech_count = fresh_count + carried
             mech_fees = float(
                 costs_by_day.get(date_timestamp, Decimal(0)) + carried_cost
             )
@@ -2496,8 +2509,8 @@ class FetchPerformanceSummaryBehaviour(
         # would be double-counted in the cumulative sum.
         visited_days = {int(s["date"]) for s in filtered_daily_stats if "date" in s}
         existing_by_ts = {int(dp.timestamp): dp for dp in new_data_points}
-        for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
-            count = fees_by_day[mech_day_ts]
+        for mech_day_ts in sorted(requests_by_day.keys() - visited_days):
+            count = requests_by_day[mech_day_ts]
             date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )

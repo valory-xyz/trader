@@ -60,7 +60,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 # A mech request with no reported charge (on-chain requests, rows from before
-# mechs reported charges, subgraph-sourced requests) costs the flat 0.01 USD.
+# mechs reported charges, subgraph-sourced requests) costs this flat fee.
 DEFAULT_MECH_FEE_USD = Decimal("0.01")
 
 # Serialises every read-modify-write of the summary file: the leaderboard
@@ -164,7 +164,7 @@ def flat_mech_fee_usd(request_count: int) -> Decimal:
     """Return what ``request_count`` mech requests with no known charge cost, in USD.
 
     :param request_count: the number of requests
-    :return: the flat fee for each of them
+    :return: the total flat fee for ``request_count`` requests
     """
     return request_count * DEFAULT_MECH_FEE_USD
 
@@ -181,8 +181,7 @@ class ProfitDataPoint:
     daily_profit_raw: Optional[float] = (
         None  # Gross daily profit from subgraph (before fees)
     )
-    # USD cost of the day's mech requests; ``None`` on points stored before
-    # costs were recorded, which cost the flat fee per request.
+    # USD cost of the day's mech requests; see ``mech_cost_usd`` for ``None``
     daily_mech_cost: Optional[float] = None
 
     @property
@@ -290,10 +289,8 @@ class OffchainDepositState:
 
     def __post_init__(self) -> None:
         """Validate the persisted checkpoint fields."""
-        # Defensive: some future writer may round-trip the wei count
-        # through JSON as a string; coerce transparently rather than
-        # rejecting. Not driven by any real prior on-disk data — this
-        # dataclass is new in this PR.
+        # Legacy summaries may carry the wei count as a JSON string; coerce
+        # it rather than reject the stored state.
         if isinstance(self.total_deposited_wei, str):
             self.total_deposited_wei = int(self.total_deposited_wei)
         if not isinstance(self.total_deposited_wei, int):
@@ -784,16 +781,12 @@ class SharedState(BaseSharedState):
             )
             return AgentPerformanceSummary()
         except (TypeError, ValueError) as e:
-            # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
-            # rejected a persisted value. Previously no field could raise
-            # from the reader; now that we persist typed state, one bad
-            # entry could brick every read. Degrade to a fresh summary
-            # rather than propagate — same behaviour as an unreadable
-            # file. Callers that persist irreversible state
-            # (``offchain_deposits.total_deposited_wei``) MUST NOT use the
-            # degraded return value to derive an on-disk write for that
-            # state — see ``read_offchain_deposits_from_disk`` for the
-            # sibling-agnostic re-read used in the cycle-end save path.
+            # A nested ``__post_init__`` (e.g. the legacy
+            # ``OffchainDepositState``) rejected a persisted value. Degrade
+            # to a fresh summary, as for an unreadable file; the save path
+            # re-reads ``offchain_deposits`` with
+            # ``read_offchain_deposits_from_disk`` so the legacy field is
+            # still kept on save.
             self.context.logger.warning(
                 f"Persisted agent performance summary failed validation ({e}); "
                 "starting from a fresh summary."
@@ -909,10 +902,7 @@ class SharedState(BaseSharedState):
 
         Uses a same-directory temp file + ``os.replace`` so a mid-write
         crash (docker stop -t 0, OOM, disk full) can't leave the file
-        truncated. Matters more than for the previous callers of this
-        method: this PR is the first to persist irreversible state
-        (``offchain_deposits.total_deposited_wei``) that cannot be
-        re-derived from the subgraph.
+        truncated.
 
         The ``leaderboard`` section is owned by the leaderboard refresh, which
         may have written it from its worker thread since the caller read the

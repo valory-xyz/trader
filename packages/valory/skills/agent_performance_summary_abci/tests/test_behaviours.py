@@ -274,7 +274,7 @@ class TestModuleConstants:
         """Schema-version floor is at least 4 (rebuild-on-load contract).
 
         A revert of the bump would leave every stored series priced at
-        0.01 per request instead of the requests' charges.
+        the flat fee per request instead of the requests' charges.
         """
         assert PROFIT_OVER_TIME_SCHEMA_VERSION >= 4
 
@@ -2380,6 +2380,26 @@ def _requester_response(all_window: Dict[str, Any]) -> MagicMock:
     return response
 
 
+def _total_mech_requests_from_analytics(
+    all_window: Dict[str, Any],
+) -> Tuple[FetchPerformanceSummaryBehaviour, MagicMock, Any]:
+    """Run ``_get_total_mech_requests`` against a ``/requester`` ``all_window``."""
+    b = _make_fetch_behaviour()
+    ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
+    params.mech_analytics_url = ANALYTICS_URL
+    with (
+        _patch_context(b, ctx, synced_data)[0],
+        _patch_context(b, ctx, synced_data)[1],
+        patch.object(
+            b,
+            "get_http_response",
+            side_effect=_return_gen(_requester_response(all_window)),
+        ),
+    ):
+        count = _drive_gen(b._get_total_mech_requests("0xaddr"))
+    return b, ctx, count
+
+
 def _scored_row(title: str, charge_usd: Optional[str]) -> dict:
     """A mech-analytics row for a request made just now on ``title``."""
     return {
@@ -2406,26 +2426,15 @@ class TestMechRequestCosts:
             ({"n_mech_requests": 4, "mech_fee_usd": "abc"}, Decimal("0.04")),
             ({"n_mech_requests": 4, "mech_fee_usd": True}, Decimal("0.04")),
             ({"n_mech_requests": 4, "mech_fee_usd": "NaN"}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": {"usd": 1}}, Decimal("0.04")),
             ({"n_mech_requests": 0, "mech_fee_usd": None}, Decimal(0)),
         ],
     )
     def test_total_cost_is_the_reported_fee_else_flat_per_request(
         self, all_window: Dict[str, Any], expected_cost: Decimal
     ) -> None:
-        """The all-time fee from mech-analytics, or 0.01 per request without it."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
-        params.mech_analytics_url = ANALYTICS_URL
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                b,
-                "get_http_response",
-                side_effect=_return_gen(_requester_response(all_window)),
-            ),
-        ):
-            count = _drive_gen(b._get_total_mech_requests("0xaddr"))
+        """The all-time fee from mech-analytics, or the flat fee per request without it."""
+        b, _, count = _total_mech_requests_from_analytics(all_window)
         assert count == all_window["n_mech_requests"]
         assert b._total_mech_cost_usd == expected_cost
 
@@ -2442,21 +2451,9 @@ class TestMechRequestCosts:
         self, all_window: Dict[str, Any], warns: bool
     ) -> None:
         """A fee that is present but rejected is logged; an absent one is not."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
-        params.mech_analytics_url = ANALYTICS_URL
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                b,
-                "get_http_response",
-                side_effect=_return_gen(_requester_response(all_window)),
-            ),
-        ):
-            _drive_gen(b._get_total_mech_requests("0xaddr"))
+        _, ctx, _ = _total_mech_requests_from_analytics(all_window)
         warnings = [str(c) for c in ctx.logger.warning.call_args_list]
-        assert any("unusable mech_fee_usd" in w for w in warnings) is warns
+        assert any("Unusable" in w and "mech_fee_usd" in w for w in warnings) is warns
 
     @pytest.mark.parametrize(
         ("charge", "expected_cost", "warns"),
@@ -2465,6 +2462,7 @@ class TestMechRequestCosts:
             (None, DEFAULT_MECH_FEE_USD, False),
             ("abc", DEFAULT_MECH_FEE_USD, True),
             ("-0.5", DEFAULT_MECH_FEE_USD, True),
+            (["0.01"], DEFAULT_MECH_FEE_USD, True),
         ],
     )
     def test_unusable_request_charge_is_logged(
@@ -2482,7 +2480,7 @@ class TestMechRequestCosts:
         assert ctx.logger.warning.called is warns
 
     def test_subgraph_total_costs_the_flat_fee_per_request(self) -> None:
-        """Without mech-analytics only on-chain requests are seen, each at 0.01."""
+        """Without mech-analytics only on-chain requests are seen, each at the flat fee."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
         with (
@@ -2498,7 +2496,7 @@ class TestMechRequestCosts:
         assert b._total_mech_cost_usd == Decimal("0.07")
 
     def test_open_cost_sums_charges_of_open_market_requests_only(self) -> None:
-        """Open requests cost their charge, 0.01 without one; closed ones are excluded."""
+        """Open requests cost their charge, the flat fee without one; closed are excluded."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
         params.mech_analytics_url = ANALYTICS_URL
@@ -2542,9 +2540,16 @@ class TestMechRequestCosts:
             _open_market_requests=2,
             _open_market_cost_usd=open_cost,
         )
-        settled = _drive_gen(b._calculate_settled_mech_requests("0xaddr"))
+        ctx, _, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            settled = _drive_gen(b._calculate_settled_mech_requests("0xaddr"))
         assert settled == 3
         assert b._settled_mech_cost_usd == settled_cost
+        # a negative difference means the two sources disagree: logged
+        assert ctx.logger.warning.called is (total_cost < open_cost)
 
     def test_no_requests_cost_nothing(self) -> None:
         """An agent with no requests has a zero settled cost, not an unknown one."""
@@ -2758,8 +2763,8 @@ class TestCalculateRoi:
             (Decimal("0.05"), 0.05),
             # free requests still count as zero cost, not the flat fee
             (Decimal(0), 0.0),
-            # no cost computed alongside the count: flat 0.01 per request
-            (None, 2 * 0.01),
+            # no cost computed alongside the count: the flat fee per request
+            (None, 2 * FLAT_FEE_USD_FLOAT),
         ],
     )
     def test_roi_cost_side_is_the_settled_mech_charge(
@@ -3592,7 +3597,7 @@ class TestCalculatePerformanceMetrics:
         assert result.roi == 0.5  # 50.0 / 100
 
     def test_profit_and_funds_used_use_the_requests_charges(self) -> None:
-        """All-time profit and funds used subtract charges, not 0.01 per request."""
+        """All-time profit and funds used subtract charges, not the flat fee per request."""
         b = _make_fetch_behaviour(
             _settled_mech_requests_count=3,
             _settled_mech_cost_usd=Decimal("0.07"),
@@ -5136,32 +5141,14 @@ class TestSaveAgentPerformanceSummary:
     def test_offchain_deposits_survives_sibling_corruption_via_raw_reread(
         self,
     ) -> None:
-        """Sibling-corruption regression using the raw-JSON re-read path.
+        """The legacy deposit state is kept on save when a sibling field is corrupt.
 
-        A stored checkpoint is on disk. ``_fetch_agent_performance_summary``
-        builds ``new_summary`` with ``offchain_deposits=None``.
-        ``_save_agent_performance_summary`` runs and calls
-        ``read_existing_performance_summary`` which returns a
-        validation-degraded fresh summary (because some *other* nested
-        field on disk, e.g. Achievements, failed ``__post_init__``). The
-        old ``if existing_data.offchain_deposits is not None`` guard would
-        have skipped the preserve, leaving ``new_summary.offchain_deposits``
-        at its construction-time ``None``, and the atomic overwrite would
-        have persisted ``None`` to disk — wiping the just-persisted
-        checkpoint.
-
-        Fix: ``_save_agent_performance_summary`` now calls
-        ``read_offchain_deposits_from_disk`` which parses only the
-        ``offchain_deposits`` sub-dict without ``__post_init__``-ing the
-        rest, so it recovers the real checkpoint even when siblings are
-        corrupt.
+        ``read_existing_performance_summary`` degrades to a fresh summary
+        when another nested field fails ``__post_init__``; the raw re-read
+        of ``offchain_deposits`` still recovers the stored legacy state.
         """
         existing = _default_summary()  # simulates the degraded fresh summary
         assert existing.offchain_deposits is None
-        # The lenient raw-JSON re-read still succeeds — this is the case
-        # the fix targets: file exists, offchain_deposits sub-dict is
-        # valid, but another field's __post_init__ blew up on the
-        # normal read.
         disk_offchain = OffchainDepositState(
             total_deposited_wei=12345, last_scanned_block=987
         )
@@ -8643,7 +8630,7 @@ class TestKpiSeriesAgreement:
         )
 
     def test_backfill_charges_each_request_its_reported_charge(self) -> None:
-        """A day's mech cost is the sum of its requests' charges, 0.01 when none."""
+        """A day's mech cost is the sum of its requests' charges, the flat fee when none."""
         day1 = _DAY0 + SECONDS_PER_DAY
         fetched = [
             {**_mech_request("Traded", day1 + 100), "chargeUsd": CHARGE_A},
@@ -8745,6 +8732,57 @@ class TestKpiSeriesAgreement:
         assert point.daily_mech_cost == pytest.approx(expected_cost)
         assert point.daily_profit_raw == pytest.approx(1.0)
         assert point.daily_profit == pytest.approx(1.0 - expected_cost)
+
+    def test_traded_day_is_charged_its_requests_charge(self) -> None:
+        """A charged request matched to a new day's bet adds its charge to that day."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Traded", day1 + 100), "chargeUsd": CHARGE_A}]
+        stats = [_stat(day1, [("Traded", day1 + 200)], False)]
+
+        result = self._tick(existing, stats, fetched, [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == day1)
+        assert point.daily_mech_requests == 1
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
+
+    def test_same_day_traded_charge_adds_to_the_carried_cost(self) -> None:
+        """Today's charged, traded request adds to the stored cost being carried."""
+        existing = self._existing_with_stored_cost(STORED_COST, 1.0)
+        fetched = [{**_mech_request("Traded", _DAY0 + 100), "chargeUsd": CHARGE_A}]
+        stats = [_stat(_DAY0, [("Traded", _DAY0 + 200)], False)]
+
+        result = self._tick(existing, stats, fetched, [], _DAY0 + 500)
+
+        (point,) = result.data_points
+        expected_cost = STORED_COST + float(Decimal(CHARGE_A))
+        assert point.daily_mech_requests == 3
+        assert point.daily_mech_cost == pytest.approx(expected_cost)
+        assert point.daily_profit == pytest.approx(-expected_cost)
+
+    def test_backfill_charges_a_mech_only_day_its_charge(self) -> None:
+        """An untraded request on a day without stats is charged on its own day."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        fetched = [{**_mech_request("Untraded", day1 + 100), "chargeUsd": CHARGE_A}]
+
+        series = self._backfill([_stat(_DAY0, [], False)], fetched, [], now=day1 + 500)
+
+        point = next(dp for dp in series.data_points if dp.timestamp == day1)
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
+
+    def test_incremental_new_mech_only_day_is_charged_its_charge(self) -> None:
+        """An untraded request on a new day is appended at its charge."""
+        day2 = _DAY0 + 2 * SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Untraded", day2 + 100), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [], day2 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == day2)
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
 
     @pytest.mark.parametrize("is_polymarket", [False, True])
     def test_backfill_holds_back_a_request_at_its_charge(
