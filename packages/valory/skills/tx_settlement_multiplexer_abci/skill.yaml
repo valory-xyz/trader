@@ -28,10 +28,10 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidvedqepygcbmztrglxlxq2tpbfwnnwjpzenjhx6zrrxbu6nloxe4
 - valory/agent_performance_summary_abci:0.1.0:bafybeie635hqpngpk2i7fs46lczekozl4w4lqfkzqxyiqypcataoehjokm
-- valory/decision_maker_abci:0.1.0:bafybeigmm2ujtelg27dhs5lsixi4r44l6jswfyjrcct7ylbqdhl4cxil5u
+- valory/decision_maker_abci:0.1.0:bafybeigrkyjl44y45tzdgld3tejukydbxf57osldikqif33fecen2riuye
 - valory/staking_abci:0.1.0:bafybeiacwtkg4rusnrp4ur7a3r4yqrp2fwlabohna7246mp2zea5z5obum
 - valory/agent_topup_abci:0.1.0:bafybeihuc6oi3gj5eouh5kpjfdwpbf3czcwphzm4z7ivligul52ufp5g4a
-- valory/mech_interact_abci:0.1.0:bafybeiaaju5qf23rvpuwuh42q2vg5tjq3gvlnqf2gnts4nlzhv4752xvhy
+- valory/mech_interact_abci:0.1.0:bafybeib5ccvjvscggsehdr35jf3tm4sbfed2v3axoiu4xd3tgljdtnndui
 behaviours:
   main:
     args: {}

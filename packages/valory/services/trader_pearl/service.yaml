@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiblvnklsz5yqewl4a4hxb6hxvmhfcdchisszeqixeeofu74fvjcmm
+agent: valory/trader:0.1.0:bafybeieslid7strqnx7ix4u5jvx6fsrhj5g7pqy62gy4o6o7cx3ybefg5q
 number_of_agents: 1
 deployment:
   agent:
@@ -183,7 +183,7 @@ models:
       enable_market_ranking: ${ENABLE_MARKET_RANKING:bool:false}
       ranking_min_score: ${RANKING_MIN_SCORE:float:0.5}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
-      delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"native":10000000000000000}}
+      delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"native":80000000000000000}}
       marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
   benchmark_tool:
     args:
