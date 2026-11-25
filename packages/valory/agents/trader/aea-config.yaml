@@ -70,16 +70,16 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiabponbevtbzdwppwf2trf6fve7ru2qyrbfxzjo3y5gipo4ylpxiq
 - valory/termination_abci:0.1.0:bafybeifqg3ourob3lyx7j3okqbsb5mi6lgqx2jyygfbgevlggpi2itd5vm
 - valory/transaction_settlement_abci:0.1.0:bafybeiamnm26osevzjawbjx3rabeibnbkptdckadlucz6ef5u4jtgtlzc4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihgct7jn7mlvvjkxirxizevkf7o3sc4s5kx7kz6s5eh4z4324tkgy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiey3iw77on3gr77vtlu54fyqoylxyhgbngjbmnazlruoqhziq4so4
 - valory/market_manager_abci:0.1.0:bafybeigofutmfhbw4yzrpruyv5pbqd4lki4ymp3bfglhurybl3ukgohjxu
-- valory/decision_maker_abci:0.1.0:bafybeihljx4ojiibttjavvys4qyr5eyjj4kha7pc37fizhez47imhfz2su
-- valory/trader_abci:0.1.0:bafybeiektxprvshv7dx4vwb647n6kthllhcpvsvijmdbylrqyg2ca5bzru
+- valory/decision_maker_abci:0.1.0:bafybeigmm2ujtelg27dhs5lsixi4r44l6jswfyjrcct7ylbqdhl4cxil5u
+- valory/trader_abci:0.1.0:bafybeifmlpjf7no3lkoihdsrmtu7awkccn7fuhkraut37uqn6od6orvzie
 - valory/staking_abci:0.1.0:bafybeiacwtkg4rusnrp4ur7a3r4yqrp2fwlabohna7246mp2zea5z5obum
 - valory/agent_topup_abci:0.1.0:bafybeihuc6oi3gj5eouh5kpjfdwpbf3czcwphzm4z7ivligul52ufp5g4a
-- valory/check_stop_trading_abci:0.1.0:bafybeihe3lpthw5bvpw4bqpmpvwbzq6wxcq3xvjnltob3ebdfw5j6chram
+- valory/check_stop_trading_abci:0.1.0:bafybeice4eep5ilapzhah5utu7byojs5q4phhfkdfsugdmbyupklkhv5wy
 - valory/mech_interact_abci:0.1.0:bafybeiaaju5qf23rvpuwuh42q2vg5tjq3gvlnqf2gnts4nlzhv4752xvhy
-- valory/chatui_abci:0.1.0:bafybeieht3d7i4nwdz2okconv7khigtrj52yvxajlfktrnq6qhn4hspsay
-- valory/agent_performance_summary_abci:0.1.0:bafybeid6w7ujg67le3nicojozr2cxwfxwoawbe2bm4v67frftsms3topq4
+- valory/chatui_abci:0.1.0:bafybeicnpppiacbg3cqhma47upcbfxexwn2gxfntqv4n7ub7ofgs2m4j64
+- valory/agent_performance_summary_abci:0.1.0:bafybeie635hqpngpk2i7fs46lczekozl4w4lqfkzqxyiqypcataoehjokm
 - valory/funds_manager:0.1.0:bafybeiasdfsha42upx67oxrfkkczcsbuezypqgwicexfzhpgf3f4nqwkta
 customs:
 - valory/kelly_criterion:0.1.0:bafybeicilvsozfawzdcsmtcwxiutr33dtixeebhawn7nolxmm5vj74z5h4
@@ -293,7 +293,6 @@ models:
       native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
-      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
       olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}

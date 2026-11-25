@@ -185,8 +185,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiamnm26osevzjawbjx3rabeibnbkptdckadlucz6ef5u4jtgtlzc4
 - valory/mech_interact_abci:0.1.0:bafybeiaaju5qf23rvpuwuh42q2vg5tjq3gvlnqf2gnts4nlzhv4752xvhy
 - valory/staking_abci:0.1.0:bafybeiacwtkg4rusnrp4ur7a3r4yqrp2fwlabohna7246mp2zea5z5obum
-- valory/agent_performance_summary_abci:0.1.0:bafybeid6w7ujg67le3nicojozr2cxwfxwoawbe2bm4v67frftsms3topq4
-- valory/chatui_abci:0.1.0:bafybeieht3d7i4nwdz2okconv7khigtrj52yvxajlfktrnq6qhn4hspsay
+- valory/agent_performance_summary_abci:0.1.0:bafybeie635hqpngpk2i7fs46lczekozl4w4lqfkzqxyiqypcataoehjokm
+- valory/chatui_abci:0.1.0:bafybeicnpppiacbg3cqhma47upcbfxexwn2gxfntqv4n7ub7ofgs2m4j64
 - valory/agent_topup_abci:0.1.0:bafybeihuc6oi3gj5eouh5kpjfdwpbf3czcwphzm4z7ivligul52ufp5g4a
 - valory/funds_manager:0.1.0:bafybeiasdfsha42upx67oxrfkkczcsbuezypqgwicexfzhpgf3f4nqwkta
 behaviours:
@@ -437,7 +437,6 @@ models:
       polymarket_router_address: '0x12121212006e4CD160D18e3f00711DA5c3372600'
       pol_threshold_for_swap: 2000000000000000000
       is_running_on_polymarket: false
-      balance_tracker_address: '0x0000000000000000000000000000000000000000'
       mech_analytics_url: ''
       olas_predict_leaderboard_url: https://predict.olas.network/api/leaderboard/agents
       use_mech_analytics: false

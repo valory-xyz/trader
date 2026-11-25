@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeicaqmu2l6ycobfki5hb4lsbqhhefaw7zdzm4m3oancxurwng4upm4
+agent: valory/trader:0.1.0:bafybeiblvnklsz5yqewl4a4hxb6hxvmhfcdchisszeqixeeofu74fvjcmm
 number_of_agents: 1
 deployment:
   agent:
@@ -171,7 +171,6 @@ models:
       native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
-      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x21cE6799A22A3Da84B7c44a814a9c79ab1d2A50D}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
       olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
