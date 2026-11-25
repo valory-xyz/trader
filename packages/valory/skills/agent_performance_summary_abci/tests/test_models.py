@@ -367,20 +367,57 @@ class TestProfitOverTimeData:
         assert pot.last_residual_rebuild_ts == 0
         assert pot.residual_rebuild_backoff_days == 1
 
-    def test_pending_and_rebuild_fields_round_trip(self) -> None:
-        """The held-back requests and rebuild time survive a JSON round trip."""
+    @pytest.mark.parametrize(
+        ("stored", "expected"),
+        [
+            (
+                {"title": "Q1", "timestamp": 1704067100},
+                PendingMechRequest("Q1", 1704067100),
+            ),
+            (
+                {"title": "Q1", "timestamp": 1704067100, "cost_usd": "0.0042"},
+                PendingMechRequest("Q1", 1704067100, "0.0042"),
+            ),
+        ],
+    )
+    def test_pending_and_rebuild_fields_round_trip(
+        self, stored: Dict[str, Any], expected: PendingMechRequest
+    ) -> None:
+        """The held-back requests, their costs and the rebuild time survive a JSON round trip."""
         pot = ProfitOverTimeData(
             last_updated=1704067200,
             total_days=0,
-            pending_mech_requests=[{"title": "Q1", "timestamp": 1704067100}],  # type: ignore[list-item]
+            pending_mech_requests=[stored],  # type: ignore[list-item]
             last_residual_rebuild_ts=1704000000,
         )
         summary = AgentPerformanceSummary(profit_over_time=pot)
 
         loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
 
-        assert loaded.profit_over_time == pot
-        assert pot.pending_mech_requests == [PendingMechRequest("Q1", 1704067100)]
+        assert loaded.profit_over_time is not None
+        assert loaded.profit_over_time.pending_mech_requests == [expected]
+        assert loaded.profit_over_time.last_residual_rebuild_ts == 1704000000
+
+    def test_malformed_pending_entries_are_skipped(self) -> None:
+        """A bad stored entry is logged and skipped; the rest of the series loads."""
+        stored: List[Any] = [
+            None,
+            {"title": "No timestamp"},
+            {"title": "Q2", "timestamp": 5, "extra": 1},
+            PendingMechRequest("Q3", 6, "0.01"),
+        ]
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models._LOGGER"
+        ) as logger:
+            pot = ProfitOverTimeData(
+                last_updated=1704067200, total_days=0, pending_mech_requests=stored
+            )
+
+        assert pot.pending_mech_requests == [
+            PendingMechRequest("Q2", 5),
+            PendingMechRequest("Q3", 6, "0.01"),
+        ]
+        assert logger.warning.call_count == 2
 
     def test_v2_file_without_new_fields_loads(self) -> None:
         """A series stored before the two fields existed still loads, at v2."""
@@ -1223,6 +1260,24 @@ class TestSharedState:
 
         assert result == AgentPerformanceSummary(agent_behavior="active")
         state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_read_existing_performance_summary_logs_unexpected_keys(
+        self, tmp_path: Path
+    ) -> None:
+        """An unknown key that is not a retired one is named before it is dropped."""
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"agent_behavior": "active", "future_section": {}})
+        )
+
+        result = state.read_existing_performance_summary()
+
+        assert result == AgentPerformanceSummary(agent_behavior="active")
+        (call,) = state.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        assert "future_section" in str(call)
 
     def test_read_existing_performance_summary_non_object_file(
         self, tmp_path: Path

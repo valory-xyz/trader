@@ -22,6 +22,7 @@
 
 import builtins
 import json
+import logging
 import os
 import tempfile
 import threading
@@ -57,7 +58,11 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
+# Summary keys from earlier builds that are dropped without a warning.
+RETIRED_SUMMARY_KEYS = frozenset({"offchain_deposits"})
 
 # What a mech request with no reported charge costs.
 DEFAULT_MECH_FEE_USD = Decimal("0.01")
@@ -206,6 +211,30 @@ class PendingMechRequest:
     cost_usd: Optional[str] = None
 
 
+def _coerce_pending_mech_requests(entries: List[Any]) -> List[PendingMechRequest]:
+    """Return stored held-back entries as ``PendingMechRequest``, skipping malformed ones.
+
+    :param entries: the stored entries, dicts or ``PendingMechRequest``
+    :return: the usable entries; a malformed one is logged and skipped so it
+        neither crashes the next tick nor discards the whole series
+    """
+    coerced: List[PendingMechRequest] = []
+    for entry in entries:
+        if isinstance(entry, PendingMechRequest):
+            coerced.append(entry)
+        elif isinstance(entry, dict) and "title" in entry and "timestamp" in entry:
+            coerced.append(
+                PendingMechRequest(
+                    title=entry["title"],
+                    timestamp=entry["timestamp"],
+                    cost_usd=entry.get("cost_usd"),
+                )
+            )
+        else:
+            _LOGGER.warning(f"Skipping malformed pending mech request {entry!r}")
+    return coerced
+
+
 @dataclass
 class ProfitOverTimeData:
     """Profit over time data stored in agent_performance.json."""
@@ -241,10 +270,9 @@ class ProfitOverTimeData:
                 for point in self.data_points
                 if isinstance(point, dict)
             ]
-        self.pending_mech_requests = [
-            PendingMechRequest(**entry) if isinstance(entry, dict) else entry
-            for entry in self.pending_mech_requests
-        ]
+        self.pending_mech_requests = _coerce_pending_mech_requests(
+            self.pending_mech_requests
+        )
 
 
 @dataclass
@@ -740,11 +768,17 @@ class SharedState(BaseSharedState):
                 raw = json.load(f)
             if not isinstance(raw, dict):
                 raise TypeError(f"expected a JSON object, got {type(raw).__name__}")
-            # Drop keys this build does not know, e.g. the retired
-            # ``offchain_deposits``, rather than reject the whole summary.
+            # Drop keys this build does not know rather than reject the whole
+            # summary; the next save erases them, so name any unexpected one.
             known = {
                 summary_field.name for summary_field in fields(AgentPerformanceSummary)
             }
+            unexpected = set(raw) - known - RETIRED_SUMMARY_KEYS
+            if unexpected:
+                self.context.logger.warning(
+                    "Dropping unknown agent performance summary keys "
+                    f"{sorted(unexpected)}; they are not kept on the next save."
+                )
             return AgentPerformanceSummary(
                 **{key: value for key, value in raw.items() if key in known}
             )
@@ -754,8 +788,9 @@ class SharedState(BaseSharedState):
             )
             return AgentPerformanceSummary()
         except (TypeError, ValueError) as e:
-            # A nested ``__post_init__`` rejected a persisted value. Degrade
-            # to a fresh summary, as for an unreadable file.
+            # The file is not a JSON object, or a nested ``__post_init__``
+            # rejected a persisted value. Degrade to a fresh summary, as for
+            # an unreadable file.
             self.context.logger.warning(
                 f"Persisted agent performance summary failed validation ({e}); "
                 "starting from a fresh summary."

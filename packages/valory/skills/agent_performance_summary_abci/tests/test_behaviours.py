@@ -2403,6 +2403,23 @@ def _scored_row(title: str, charge_usd: Optional[str]) -> dict:
 class TestMechRequestCosts:
     """The cost side of ROI is what the requests were charged."""
 
+    def test_split_off_held_back_costs_leaves_its_input_untouched(self) -> None:
+        """Held-back costs come out of a copy; the caller's costs are unchanged."""
+        costs = {("Open", 1): [Decimal(CHARGE_A)], ("Other", 2): [Decimal("0.02")]}
+
+        pending, remaining = (
+            FetchPerformanceSummaryBehaviour._split_off_held_back_costs(
+                [("Open", 1)], costs
+            )
+        )
+
+        assert pending == [PendingMechRequest("Open", 1, CHARGE_A)]
+        assert remaining == {("Open", 1): [], ("Other", 2): [Decimal("0.02")]}
+        assert costs == {
+            ("Open", 1): [Decimal(CHARGE_A)],
+            ("Other", 2): [Decimal("0.02")],
+        }
+
     @pytest.mark.parametrize(
         ("all_window", "expected_cost"),
         [
@@ -2765,7 +2782,7 @@ class TestCalculateRoi:
     def test_roi_cost_side_is_the_settled_mech_charge(
         self, settled_cost_usd: Optional[Decimal], mech_cost_usd: float
     ) -> None:
-        """Mech costs enter ROI as the settled requests' charges, deposits not at all."""
+        """Mech costs enter ROI as the settled requests' charges."""
         b = _make_fetch_behaviour(
             _settled_mech_requests_count=2, _settled_mech_cost_usd=settled_cost_usd
         )
