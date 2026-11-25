@@ -39,7 +39,6 @@ from packages.valory.skills.agent_performance_summary_abci.achievements_checker.
     BetPayoutChecker,
 )
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
-    DEFAULT_MECH_FEE_USD,
     FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LEADERBOARD_REFRESH_INTERVAL,
@@ -86,6 +85,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    DEFAULT_MECH_FEE_USD,
     LEADERBOARD_WINDOWS,
     LeaderboardData,
     LeaderboardWindow,
@@ -117,10 +117,14 @@ from packages.valory.skills.agent_performance_summary_abci.tests.constants impor
 # "caller passed ``None`` explicitly (simulating a raw-disk-read miss)".
 _UNSET = object()
 
-# How a held-back request with no reported charge is stored.
-FLAT_FEE_USD = str(DEFAULT_MECH_FEE_USD)
+# The flat fee as a held-back request without a reported charge stores it,
+# and as the series' float fields hold it.
+FLAT_FEE_USD_STR = str(DEFAULT_MECH_FEE_USD)
+FLAT_FEE_USD_FLOAT = float(DEFAULT_MECH_FEE_USD)
 # A sub-cent charge as mech-analytics serves it.
 CHARGE_A = "0.0073"
+# A stored day's cost that differs from its request count times the flat fee.
+STORED_COST = 0.0042
 
 
 class _DiskSharedState(SharedState):
@@ -199,9 +203,6 @@ def _mock_context(
     params.is_agent_performance_summary_enabled = True
     params.is_achievement_checker_enabled = True
     params.mech_chain_id = mech_chain_id
-    # Sensible non-zero default; tests that care about the zero-address
-    # short-circuit override this explicitly.
-    params.balance_tracker_address = "0x000000000000000000000000000000000000BEEF"
     ctx.params = params
 
     synced_data = MagicMock()
@@ -1519,7 +1520,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [1699999900]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert fees_by_day == {1700000000: 1}
         assert placed == 1
@@ -1549,7 +1550,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [day1 - 100, day2 - 100]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert fees_by_day == {day1: 1, day2: 1}
         assert placed == 2
@@ -1575,7 +1576,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [mech_ts_1, mech_ts_2, mech_ts_3]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 2
@@ -1595,7 +1596,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [day1 - 100, day1 + 100]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 2
@@ -1616,7 +1617,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [day1 - 100]}  # different title
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 1  # Q1 request is unplaced
@@ -1626,7 +1627,9 @@ class TestMatchMechRequestsToDays:
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days([], {})
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                [], {}, {}
+            )
         assert fees_by_day == {}
         assert placed == 0
         assert unplaced == 0
@@ -1645,7 +1648,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"PM Market": [day1 - 50]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 0
@@ -1680,7 +1683,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"PM Market": [bet_ts - 10]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 0
@@ -1700,7 +1703,7 @@ class TestMatchMechRequestsToDays:
         lookup = {"Q1": [100]}
         with _patch_context(b, ctx, synced_data)[0]:
             fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
-                stats, lookup
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 1
@@ -1733,7 +1736,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced, _ = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 1
         assert unplaced == 2
         # Correct: mech_day1 consumed → unplaced on day0 and day2
@@ -1758,7 +1763,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced, _ = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         # bet_ts=0 skipped, Q1 mech request is unplaced
         assert placed == 0
         assert unplaced == 1
@@ -1781,7 +1788,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced, _ = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 0
         assert unplaced == 2
 
@@ -1799,7 +1808,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced, _ = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 1
         assert unplaced == 0
 
@@ -1813,25 +1824,23 @@ class TestApplyMechFees:
     """Tests for _apply_mech_fees (simplified: looks up pre-computed fees_by_day)."""
 
     def test_day_in_fees(self) -> None:
-        """Returns correct fees when day is in fees_by_day."""
+        """Returns the day's count and its pre-computed cost."""
         b = _make_fetch_behaviour()
-        fees_by_day = {100: 3}
-        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        fees, count = b._apply_mech_fees({100: 3}, 100, {100: Decimal(CHARGE_A)})
         assert count == 3
-        assert fees == 3 * float(DEFAULT_MECH_FEE_USD)
+        assert fees == float(Decimal(CHARGE_A))
 
     def test_day_not_in_fees(self) -> None:
         """Returns zero when day is not in fees_by_day."""
         b = _make_fetch_behaviour()
-        fees_by_day = {200: 5}
-        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        fees, count = b._apply_mech_fees({200: 5}, 100, {200: Decimal("0.05")})
         assert count == 0
         assert fees == 0.0
 
     def test_empty_fees_by_day(self) -> None:
         """Returns zero for empty fees_by_day."""
         b = _make_fetch_behaviour()
-        fees, count = b._apply_mech_fees({}, 100)
+        fees, count = b._apply_mech_fees({}, 100, {})
         assert count == 0
         assert fees == 0.0
 
@@ -2419,6 +2428,58 @@ class TestMechRequestCosts:
             count = _drive_gen(b._get_total_mech_requests("0xaddr"))
         assert count == all_window["n_mech_requests"]
         assert b._total_mech_cost_usd == expected_cost
+
+    @pytest.mark.parametrize(
+        ("all_window", "warns"),
+        [
+            ({"n_mech_requests": 4, "mech_fee_usd": "abc"}, True),
+            ({"n_mech_requests": 4, "mech_fee_usd": -1}, True),
+            ({"n_mech_requests": 4, "mech_fee_usd": None}, False),
+            ({"n_mech_requests": 4}, False),
+        ],
+    )
+    def test_unusable_reported_fee_is_logged(
+        self, all_window: Dict[str, Any], warns: bool
+    ) -> None:
+        """A fee that is present but rejected is logged; an absent one is not."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
+        params.mech_analytics_url = ANALYTICS_URL
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "get_http_response",
+                side_effect=_return_gen(_requester_response(all_window)),
+            ),
+        ):
+            _drive_gen(b._get_total_mech_requests("0xaddr"))
+        warnings = [str(c) for c in ctx.logger.warning.call_args_list]
+        assert any("unusable mech_fee_usd" in w for w in warnings) is warns
+
+    @pytest.mark.parametrize(
+        ("charge", "expected_cost", "warns"),
+        [
+            (CHARGE_A, Decimal(CHARGE_A), False),
+            (None, DEFAULT_MECH_FEE_USD, False),
+            ("abc", DEFAULT_MECH_FEE_USD, True),
+            ("-0.5", DEFAULT_MECH_FEE_USD, True),
+        ],
+    )
+    def test_unusable_request_charge_is_logged(
+        self, charge: Optional[str], expected_cost: Decimal, warns: bool
+    ) -> None:
+        """A request charge that is present but rejected costs the flat fee, logged."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            cost = b._mech_request_cost_usd({"requestId": "0x1", "chargeUsd": charge})
+        assert cost == expected_cost
+        assert ctx.logger.warning.called is warns
 
     def test_subgraph_total_costs_the_flat_fee_per_request(self) -> None:
         """Without mech-analytics only on-chain requests are seen, each at 0.01."""
@@ -7109,8 +7170,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=stored_mech_count,
-                    daily_profit_raw=1.0
-                    + stored_mech_count * float(DEFAULT_MECH_FEE_USD),
+                    daily_profit_raw=1.0 + stored_mech_count * FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=stored_mech_count,
@@ -7393,7 +7453,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=1,
-                    daily_profit_raw=1.0 + float(DEFAULT_MECH_FEE_USD),
+                    daily_profit_raw=1.0 + FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=1,
@@ -7645,11 +7705,11 @@ class TestIncrementalAttributionInvariants:
         # New daily_profit = raw - merged_fees = 1.03 - 4 * 0.01 = 0.99.
         assert older_row.daily_mech_requests == stored_count + 1
         assert older_row.daily_profit_raw == round(
-            stored_net + stored_count * float(DEFAULT_MECH_FEE_USD), 3
+            stored_net + stored_count * FLAT_FEE_USD_FLOAT, 3
         )
         assert older_row.daily_profit == round(
             (older_row.daily_profit_raw or 0.0)
-            - older_row.daily_mech_requests * float(DEFAULT_MECH_FEE_USD),
+            - older_row.daily_mech_requests * FLAT_FEE_USD_FLOAT,
             3,
         )
 
@@ -7678,7 +7738,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=2,
-                    daily_profit_raw=1.0 + 2 * float(DEFAULT_MECH_FEE_USD),
+                    daily_profit_raw=1.0 + 2 * FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=100,
@@ -7792,7 +7852,6 @@ class TestIncrementalAttributionInvariants:
 # KPI / series agreement: every settled request charged once, open ones held
 # ---------------------------------------------------------------------------
 
-_FEE = float(DEFAULT_MECH_FEE_USD)
 _DAY0 = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
 
 
@@ -7938,7 +7997,9 @@ class TestKpiSeriesAgreement:
         assert result.placed_mech_requests_count == 1
         assert result.unplaced_mech_requests_count == 2
         assert result.settled_mech_requests_count == 3
-        assert result.data_points[-1].cumulative_profit == round(1.0 - 3 * _FEE, 3)
+        assert result.data_points[-1].cumulative_profit == round(
+            1.0 - 3 * FLAT_FEE_USD_FLOAT, 3
+        )
         assert result.last_mech_timestamp == day1 + 160
 
     @pytest.mark.parametrize("is_polymarket", [False, True])
@@ -7961,11 +8022,19 @@ class TestKpiSeriesAgreement:
         assert backfilled.settled_mech_requests_count == 2
         assert (
             backfilled.pending_mech_requests
-            == [{"title": "Open", "timestamp": _DAY0 + 150, "cost_usd": FLAT_FEE_USD}]
+            == [
+                {
+                    "title": "Open",
+                    "timestamp": _DAY0 + 150,
+                    "cost_usd": FLAT_FEE_USD_STR,
+                }
+            ]
             * 2
         )
         assert backfilled.last_mech_timestamp == _DAY0 + 160
-        assert backfilled.data_points[-1].cumulative_profit == round(-2 * _FEE, 3)
+        assert backfilled.data_points[-1].cumulative_profit == round(
+            -2 * FLAT_FEE_USD_FLOAT, 3
+        )
 
         # The markets close: nothing new is fetched, both requests are released.
         day1 = _DAY0 + SECONDS_PER_DAY
@@ -7973,7 +8042,9 @@ class TestKpiSeriesAgreement:
 
         assert released.settled_mech_requests_count == 4
         assert released.pending_mech_requests == []
-        assert released.data_points[-1].cumulative_profit == round(-4 * _FEE, 3)
+        assert released.data_points[-1].cumulative_profit == round(
+            -4 * FLAT_FEE_USD_FLOAT, 3
+        )
 
         # Nothing new and nothing pending: the stored series is left as is.
         again = self._tick(released, [], [], [], day1 + 200, is_polymarket)
@@ -8203,7 +8274,7 @@ class TestKpiSeriesAgreement:
 
         assert result.settled_mech_requests_count == 1
         assert result.pending_mech_requests == [
-            {"title": "Open", "timestamp": day1 + 100, "cost_usd": FLAT_FEE_USD}
+            {"title": "Open", "timestamp": day1 + 100, "cost_usd": FLAT_FEE_USD_STR}
         ]
         assert result.last_mech_timestamp == day1 + 100
 
@@ -8235,8 +8306,10 @@ class TestKpiSeriesAgreement:
         )
 
         assert [dp.timestamp for dp in result.data_points] == [_DAY0, day2]
-        assert result.data_points[-1].daily_profit == -_FEE
-        assert result.data_points[-1].cumulative_profit == round(1.0 - _FEE, 3)
+        assert result.data_points[-1].daily_profit == -FLAT_FEE_USD_FLOAT
+        assert result.data_points[-1].cumulative_profit == round(
+            1.0 - FLAT_FEE_USD_FLOAT, 3
+        )
         assert result.last_mech_timestamp == day2 + 100
 
     def test_new_pending_request_forces_a_write(self) -> None:
@@ -8254,7 +8327,7 @@ class TestKpiSeriesAgreement:
 
         assert result is not existing
         assert result.pending_mech_requests == [
-            {"title": "Open", "timestamp": _DAY0 + 300, "cost_usd": FLAT_FEE_USD}
+            {"title": "Open", "timestamp": _DAY0 + 300, "cost_usd": FLAT_FEE_USD_STR}
         ]
         assert result.settled_mech_requests_count == 0
 
@@ -8281,7 +8354,9 @@ class TestKpiSeriesAgreement:
 
             settled = generated - len(open_requests)
             assert series.settled_mech_requests_count == settled
-            assert series.data_points[-1].cumulative_profit == round(-settled * _FEE, 3)
+            assert series.data_points[-1].cumulative_profit == round(
+                -settled * FLAT_FEE_USD_FLOAT, 3
+            )
 
     def _kpi_and_series_round(
         self,
@@ -8441,9 +8516,11 @@ class TestKpiSeriesAgreement:
         assert kpi == 6
         assert series.settled_mech_requests_count == kpi
         assert series.pending_mech_requests == [
-            {"title": "New open", "timestamp": day1 + 100, "cost_usd": FLAT_FEE_USD}
+            {"title": "New open", "timestamp": day1 + 100, "cost_usd": FLAT_FEE_USD_STR}
         ]
-        assert series.data_points[-1].cumulative_profit == round(-kpi * _FEE, 3)
+        assert series.data_points[-1].cumulative_profit == round(
+            -kpi * FLAT_FEE_USD_FLOAT, 3
+        )
 
     def test_late_scored_request_is_charged_once(self) -> None:
         """A request mech-analytics serves after the watermark passed it is charged once."""
@@ -8537,7 +8614,9 @@ class TestKpiSeriesAgreement:
 
         assert result.data_points[1].daily_profit == 4 * 10**14 / WEI_IN_ETH
         assert result.data_points[1].daily_profit_raw == 4 * 10**14 / WEI_IN_ETH
-        assert result.data_points[-1].cumulative_profit == round(10 * 0.0004 - _FEE, 3)
+        assert result.data_points[-1].cumulative_profit == round(
+            10 * 0.0004 - FLAT_FEE_USD_FLOAT, 3
+        )
 
     def test_incremental_daily_profit_is_stored_unrounded(self) -> None:
         """Sub-0.001 daily profits add up across ticks and a same-day replace."""
@@ -8576,7 +8655,9 @@ class TestKpiSeriesAgreement:
 
         (point,) = series.data_points
         assert point.daily_mech_requests == 2
-        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)) + _FEE)
+        assert point.daily_mech_cost == pytest.approx(
+            float(Decimal(CHARGE_A)) + FLAT_FEE_USD_FLOAT
+        )
         assert point.daily_profit == pytest.approx(-point.daily_mech_cost)
 
     def test_incremental_merge_keeps_stored_cost_and_adds_new_charges(self) -> None:
@@ -8590,7 +8671,7 @@ class TestKpiSeriesAgreement:
 
         point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
         assert point.daily_mech_requests == 3
-        expected_cost = 2 * _FEE + float(Decimal(CHARGE_A))
+        expected_cost = 2 * FLAT_FEE_USD_FLOAT + float(Decimal(CHARGE_A))
         assert point.daily_mech_cost == pytest.approx(expected_cost)
         assert point.daily_profit == pytest.approx(1.0 - expected_cost)
 
@@ -8600,9 +8681,9 @@ class TestKpiSeriesAgreement:
             # a held-back request is charged what it cost when fetched
             (CHARGE_A, float(Decimal(CHARGE_A))),
             # entries stored before costs were recorded cost the flat fee
-            (None, _FEE),
+            (None, FLAT_FEE_USD_FLOAT),
             # an unreadable stored cost also falls back to the flat fee
-            ("not-a-number", _FEE),
+            ("not-a-number", FLAT_FEE_USD_FLOAT),
         ],
     )
     def test_released_pending_request_is_charged_its_stored_cost(
@@ -8621,6 +8702,91 @@ class TestKpiSeriesAgreement:
         point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
         assert point.daily_mech_cost == pytest.approx(charged)
         assert result.pending_mech_requests == []
+
+    def _existing_with_stored_cost(
+        self, stored_cost: float, daily_profit_raw: Optional[float]
+    ) -> ProfitOverTimeData:
+        """A one-day series whose two requests cost ``stored_cost``, not the flat fee."""
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        point = existing.data_points[0]
+        point.daily_mech_requests = 2
+        point.daily_mech_cost = stored_cost
+        point.daily_profit = 1.0 - stored_cost
+        point.cumulative_profit = round(point.daily_profit, 3)
+        point.daily_profit_raw = daily_profit_raw
+        return existing
+
+    def test_same_day_refresh_carries_the_stored_cost(self) -> None:
+        """Replacing today's point keeps its stored cost, not the flat fee."""
+        existing = self._existing_with_stored_cost(STORED_COST, 1.0)
+        stats = [{"date": str(_DAY0), "dailyProfit": str(2 * WEI_IN_ETH)}]
+
+        result = self._tick(existing, stats, [], [], _DAY0 + 500)
+
+        (point,) = result.data_points
+        assert point.daily_mech_requests == 2
+        assert point.daily_mech_cost == pytest.approx(STORED_COST)
+        assert point.daily_profit == pytest.approx(2.0 - STORED_COST)
+
+    @pytest.mark.parametrize("daily_profit_raw", [1.0, None])
+    def test_merge_into_a_stored_day_keeps_its_stored_cost(
+        self, daily_profit_raw: Optional[float]
+    ) -> None:
+        """A late request merged into a stored day adds to that day's stored cost."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing_with_stored_cost(STORED_COST, daily_profit_raw)
+        fetched = [{**_mech_request("Untraded", _DAY0 + 50), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
+        expected_cost = STORED_COST + float(Decimal(CHARGE_A))
+        assert point.daily_mech_requests == 3
+        assert point.daily_mech_cost == pytest.approx(expected_cost)
+        assert point.daily_profit_raw == pytest.approx(1.0)
+        assert point.daily_profit == pytest.approx(1.0 - expected_cost)
+
+    @pytest.mark.parametrize("is_polymarket", [False, True])
+    def test_backfill_holds_back_a_request_at_its_charge(
+        self, is_polymarket: bool
+    ) -> None:
+        """A request held back as open is stored with the charge it was fetched with."""
+        fetched = [{**_mech_request("Open", _DAY0 + 150), "chargeUsd": CHARGE_A}]
+
+        series = self._backfill(
+            [_stat(_DAY0, [], is_polymarket)],
+            fetched,
+            [("Open", _DAY0 + 150)],
+            is_polymarket,
+        )
+
+        assert series.pending_mech_requests == [
+            {"title": "Open", "timestamp": _DAY0 + 150, "cost_usd": CHARGE_A}
+        ]
+
+    def test_incremental_tick_holds_back_a_request_at_its_charge(self) -> None:
+        """A newly fetched open request is stored with its charge."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Open", day1 + 100), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [("Open", day1 + 100)], day1 + 500)
+
+        assert result.pending_mech_requests == [
+            {"title": "Open", "timestamp": day1 + 100, "cost_usd": CHARGE_A}
+        ]
+
+    def test_still_open_pending_request_keeps_its_charge(self) -> None:
+        """A held-back request that stays open is stored again at its charge."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        pending = {"title": "Open", "timestamp": _DAY0 + 50, "cost_usd": CHARGE_A}
+        existing.pending_mech_requests = [pending]
+        fetched = [_mech_request("Other", day1 + 100)]
+
+        result = self._tick(existing, [], fetched, [("Open", _DAY0 + 50)], day1 + 500)
+
+        assert result.pending_mech_requests == [pending]
 
 
 # ---------------------------------------------------------------------------

@@ -98,6 +98,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     ProfitDataPoint,
     ProfitOverTimeData,
     SharedState,
+    flat_mech_fee_usd,
     get_leaderboard_agent_type,
     is_allowed_leaderboard_url,
     is_not_ranked_reason,
@@ -115,9 +116,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 RESOLVED_STATUSES = frozenset(
     {BetStatus.WON.value, BetStatus.LOST.value, BetStatus.INVALID.value}
 )
-# A mech request with no reported charge (on-chain requests, rows from before
-# mechs reported charges, subgraph-sourced requests) costs the flat 0.01 USD.
-DEFAULT_MECH_FEE_USD = Decimal("0.01")
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
@@ -198,15 +196,14 @@ def _usd_amount(value: Any) -> Optional[Decimal]:
     return amount
 
 
-def _mech_request_cost_usd(request: dict) -> Decimal:
-    """Return what a subgraph-shaped mech request cost, in USD.
+def _cost_or_flat_fee(cost: Optional[Decimal], request_count: int) -> Decimal:
+    """Return a known cost, or the flat fee for ``request_count`` requests.
 
-    :param request: a mech request; ``chargeUsd`` is the charge the mech
-        reported, absent for on-chain and subgraph-sourced requests
-    :return: the reported charge, or ``DEFAULT_MECH_FEE_USD`` without one
+    :param cost: the known USD cost, ``None`` when unknown
+    :param request_count: the number of requests the cost belongs to
+    :return: ``cost``, or ``flat_mech_fee_usd(request_count)`` without one
     """
-    charge = _usd_amount(request.get("chargeUsd"))
-    return DEFAULT_MECH_FEE_USD if charge is None else charge
+    return flat_mech_fee_usd(request_count) if cost is None else cost
 
 
 MechRequestCosts = Dict[Tuple[str, int], List[Decimal]]
@@ -217,10 +214,10 @@ def _take_cost(costs: MechRequestCosts, key: Tuple[str, int]) -> Decimal:
 
     :param costs: each request's cost by ``(title, timestamp)``; modified
     :param key: the request's ``(title, timestamp)``
-    :return: its cost, or ``DEFAULT_MECH_FEE_USD`` when none is known
+    :return: its cost, or the flat fee when none is known
     """
     known = costs.get(key)
-    return known.pop(0) if known else DEFAULT_MECH_FEE_USD
+    return known.pop(0) if known else flat_mech_fee_usd(1)
 
 
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
@@ -598,8 +595,8 @@ class FetchPerformanceSummaryBehaviour(
         :return: Total number of mech requests, or ``None`` when the
             fetch failed and no cached value is available. Callers MUST
             distinguish ``None`` (unknown, cannot compute) from ``0``
-            (genuinely no requests) — multiplying ``None`` into
-            ``all_mech_costs`` inflates ROI silently.
+            (genuinely no requests) - multiplying ``None`` into the
+            mech cost inflates ROI silently.
         :yield: None
         """
         if self._total_mech_requests is not None:
@@ -610,7 +607,7 @@ class FetchPerformanceSummaryBehaviour(
         # read (``sender.totalMarketplaceRequests``) is only incremented
         # on the on-chain MarketplaceRequest event and freezes for
         # off-chain volume post-switch, so the pre-migration read
-        # undercounts ``all_mech_costs`` as off-chain adoption grows.
+        # undercounts the mech cost as off-chain adoption grows.
         # ``/v1/metrics/requester/{chain_id}/{address}`` returns the
         # per-window rollups for this exact Safe on this exact chain
         # (Gnosis Safe proxies CREATE2 to the same address on every
@@ -646,9 +643,8 @@ class FetchPerformanceSummaryBehaviour(
             # ``None`` = transport / schema failure. An unknown Safe
             # returns a zero-shaped body (not None), so a real 0 count
             # still caches correctly. Return ``None`` (not 0) so callers
-            # short-circuit cost math this round instead of computing
-            # ``all_mech_costs = 0`` and reporting
-            # inflated ROI.
+            # short-circuit cost math this round instead of computing a
+            # zero mech cost and reporting inflated ROI.
             if usage is None:
                 self.context.logger.warning(
                     "mech-analytics /requester fetch failed; skipping "
@@ -660,11 +656,15 @@ class FetchPerformanceSummaryBehaviour(
             # ``mech_fee_usd`` is the real charges plus the flat fee for
             # requests without one; a deployment that predates the field
             # gets the flat fee for every request.
-            fee = _usd_amount(all_window.get("mech_fee_usd"))
-            self._total_mech_cost_usd = (
-                fee
-                if fee is not None
-                else self._total_mech_requests * DEFAULT_MECH_FEE_USD
+            raw_fee = all_window.get("mech_fee_usd")
+            fee = _usd_amount(raw_fee)
+            if fee is None and raw_fee is not None:
+                self.context.logger.warning(
+                    f"mech-analytics /requester served an unusable "
+                    f"mech_fee_usd={raw_fee!r}; charging the flat fee per request"
+                )
+            self._total_mech_cost_usd = _cost_or_flat_fee(
+                fee, self._total_mech_requests
             )
             self.context.logger.info(
                 f"{self._total_mech_requests=}, {self._total_mech_cost_usd=}"
@@ -683,7 +683,7 @@ class FetchPerformanceSummaryBehaviour(
 
         self._total_mech_requests = int(mech_sender["totalMarketplaceRequests"])
         # The subgraph sees only on-chain requests, each at the flat fee.
-        self._total_mech_cost_usd = self._total_mech_requests * DEFAULT_MECH_FEE_USD
+        self._total_mech_cost_usd = flat_mech_fee_usd(self._total_mech_requests)
         self.context.logger.info(f"{self._total_mech_requests=}")
         return self._total_mech_requests
 
@@ -792,18 +792,17 @@ class FetchPerformanceSummaryBehaviour(
 
         # Keep the requests for still-open markets, not just their count, so
         # the profit series holds back exactly the requests counted here.
-        open_requests = [
-            request
-            for request in last_four_days_requests
-            if self._mech_request_key(request)[0]
-            and self._mech_request_key(request)[0] in open_market_titles
-        ]
-        self._open_market_request_keys = [
-            self._mech_request_key(request) for request in open_requests
-        ]
-        self._open_market_requests = len(self._open_market_request_keys)
+        open_requests: List[dict] = []
+        open_request_keys: List[Tuple[str, int]] = []
+        for request in last_four_days_requests:
+            key = self._mech_request_key(request)
+            if key[0] and key[0] in open_market_titles:
+                open_requests.append(request)
+                open_request_keys.append(key)
+        self._open_market_request_keys = open_request_keys
+        self._open_market_requests = len(open_request_keys)
         self._open_market_cost_usd = sum(
-            (_mech_request_cost_usd(request) for request in open_requests),
+            (self._mech_request_cost_usd(request) for request in open_requests),
             Decimal(0),
         )
         self.context.logger.info(
@@ -849,37 +848,11 @@ class FetchPerformanceSummaryBehaviour(
 
         # where settled = Total - Open, for the count and for the cost
         self._settled_mech_cost_usd = max(
-            self._total_cost_usd(total_mech_requests)
-            - (
-                self._open_market_cost_usd
-                if self._open_market_cost_usd is not None
-                else open_market_requests * DEFAULT_MECH_FEE_USD
-            ),
+            _cost_or_flat_fee(self._total_mech_cost_usd, total_mech_requests)
+            - _cost_or_flat_fee(self._open_market_cost_usd, open_market_requests),
             Decimal(0),
         )
         return total_mech_requests - open_market_requests
-
-    def _total_cost_usd(self, total_mech_requests: int) -> Decimal:
-        """Return the USD cost of every mech request the agent made.
-
-        :param total_mech_requests: the request count the cost belongs to
-        :return: the fetched cost, or the flat fee per request when none
-            was fetched alongside the count
-        """
-        if self._total_mech_cost_usd is not None:
-            return self._total_mech_cost_usd
-        return total_mech_requests * DEFAULT_MECH_FEE_USD
-
-    def _settled_cost_usd(self, settled_mech_requests: int) -> Decimal:
-        """Return the USD cost of the settled mech requests.
-
-        :param settled_mech_requests: the settled count the cost belongs to
-        :return: the computed cost, or the flat fee per request when none
-            was computed alongside the count
-        """
-        if self._settled_mech_cost_usd is not None:
-            return self._settled_mech_cost_usd
-        return settled_mech_requests * DEFAULT_MECH_FEE_USD
 
     def calculate_roi(
         self,
@@ -968,8 +941,9 @@ class FetchPerformanceSummaryBehaviour(
             f"total_market_payout_usd={total_market_payout_usd:.6f}"
         )
 
-        # What the settled requests cost, on-chain and off-chain alike.
-        settled_mech_costs_usd = float(self._settled_cost_usd(settled_mech_requests))
+        settled_mech_costs_usd = float(
+            _cost_or_flat_fee(self._settled_mech_cost_usd, settled_mech_requests)
+        )
 
         self.context.logger.info(
             f"[ROI Calculation] Mech costs: "
@@ -1309,7 +1283,9 @@ class FetchPerformanceSummaryBehaviour(
             else max(total_mech_requests - open_mech_requests - placed_mech_requests, 0)
         )
 
-        all_mech_costs_usd = float(self._total_cost_usd(total_mech_requests))
+        all_mech_costs_usd = float(
+            _cost_or_flat_fee(self._total_mech_cost_usd, total_mech_requests)
+        )
 
         # Use appropriate divisor based on platform
         # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
@@ -1326,7 +1302,9 @@ class FetchPerformanceSummaryBehaviour(
 
         # All-time profit: uses settled traded/fees and settled mech costs
         # Settled mech requests include both placed and unplaced mech calls (excluding open markets).
-        settled_mech_costs_usd = float(self._settled_cost_usd(settled_mech_requests))
+        settled_mech_costs_usd = float(
+            _cost_or_flat_fee(self._settled_mech_cost_usd, settled_mech_requests)
+        )
         all_time_profit = (
             total_payout - total_traded_settled - total_fees_settled
         ) / token_divisor - settled_mech_costs_usd
@@ -1670,7 +1648,7 @@ class FetchPerformanceSummaryBehaviour(
         self,
         daily_stats: list,
         mech_request_lookup: Dict[str, List[int]],
-        request_costs: Optional[MechRequestCosts] = None,
+        request_costs: MechRequestCosts,
     ) -> Tuple[Dict[int, int], int, int, Dict[int, Decimal]]:
         """Match mech requests to bet days using timestamps (last-before-bet via bisect).
 
@@ -1683,7 +1661,7 @@ class FetchPerformanceSummaryBehaviour(
         :param daily_stats: List of daily profit statistics
         :param mech_request_lookup: Dictionary mapping question titles to sorted timestamp lists
         :param request_costs: each request's cost by ``(title, timestamp)``;
-            a request without one costs ``DEFAULT_MECH_FEE_USD``
+            a request without one costs the flat fee
         :return: Tuple of (requests per day, placed_count, unplaced_count,
             USD cost per day)
         """
@@ -1692,7 +1670,7 @@ class FetchPerformanceSummaryBehaviour(
             title: list(timestamps) for title, timestamps in mech_request_lookup.items()
         }
         costs: MechRequestCosts = {
-            key: list(values) for key, values in (request_costs or {}).items()
+            key: list(values) for key, values in request_costs.items()
         }
 
         fees_by_day: Dict[int, int] = {}
@@ -1805,9 +1783,8 @@ class FetchPerformanceSummaryBehaviour(
             for title, ts in held_back
         ]
 
-    @classmethod
     def _costs_by_key(
-        cls,
+        self,
         mech_requests: List[dict],
         pending: Optional[List[Dict[str, Any]]] = None,
     ) -> MechRequestCosts:
@@ -1822,14 +1799,28 @@ class FetchPerformanceSummaryBehaviour(
         for entry in pending or []:
             cost = _usd_amount(entry.get("cost_usd"))
             key = (entry["title"], int(entry["timestamp"]))
-            costs.setdefault(key, []).append(
-                DEFAULT_MECH_FEE_USD if cost is None else cost
-            )
+            costs.setdefault(key, []).append(_cost_or_flat_fee(cost, 1))
         for request in mech_requests:
-            key = cls._mech_request_key(request)
+            key = self._mech_request_key(request)
             if key[1]:
-                costs.setdefault(key, []).append(_mech_request_cost_usd(request))
+                costs.setdefault(key, []).append(self._mech_request_cost_usd(request))
         return costs
+
+    def _mech_request_cost_usd(self, request: dict) -> Decimal:
+        """Return what a subgraph-shaped mech request cost, in USD.
+
+        :param request: a mech request; ``chargeUsd`` is the charge the mech
+            reported, absent for on-chain and subgraph-sourced requests
+        :return: the reported charge, or the flat fee without a usable one
+        """
+        raw_charge = request.get("chargeUsd")
+        charge = _usd_amount(raw_charge)
+        if charge is None and raw_charge is not None:
+            self.context.logger.warning(
+                f"Mech request {request.get('requestId')!r} has an unusable "
+                f"chargeUsd={raw_charge!r}; charging the flat fee"
+            )
+        return _cost_or_flat_fee(charge, 1)
 
     def _recent_request_ids(
         self, requests: List[dict], watermark: int
@@ -1851,35 +1842,20 @@ class FetchPerformanceSummaryBehaviour(
             }
         )
 
-    @staticmethod
-    def _stored_mech_cost(point: ProfitDataPoint) -> Decimal:
-        """Return a stored day's mech cost in USD.
-
-        :param point: a persisted profit data point
-        :return: its stored cost, or the flat fee per request for a point
-            stored before costs were recorded
-        """
-        if point.daily_mech_cost is None:
-            return point.daily_mech_requests * DEFAULT_MECH_FEE_USD
-        return Decimal(str(point.daily_mech_cost))
-
     def _apply_mech_fees(
         self,
         fees_by_day: Dict[int, int],
         date_timestamp: int,
-        costs_by_day: Optional[Dict[int, Decimal]] = None,
+        costs_by_day: Dict[int, Decimal],
     ) -> Tuple[float, int]:
         """Look up a day's pre-computed mech requests and their cost.
 
         :param fees_by_day: Pre-computed mapping of day timestamp to mech request count
         :param date_timestamp: The day timestamp to look up
-        :param costs_by_day: Pre-computed USD cost per day; without it each
-            request costs ``DEFAULT_MECH_FEE_USD``
+        :param costs_by_day: Pre-computed USD cost per day
         :return: Tuple of (mech fees in USD, mech_request_count)
         """
         count = fees_by_day.get(date_timestamp, 0)
-        if costs_by_day is None:
-            return float(count * DEFAULT_MECH_FEE_USD), count
         return float(costs_by_day.get(date_timestamp, Decimal(0))), count
 
     def _build_mech_request_lookup(
@@ -2463,7 +2439,7 @@ class FetchPerformanceSummaryBehaviour(
                 # construction (both derived from the same last data
                 # point's timestamp).
                 carry_by_day_idx[last_dp_day] = last_dp.daily_mech_requests
-                carry_cost_by_day_idx[last_dp_day] = self._stored_mech_cost(last_dp)
+                carry_cost_by_day_idx[last_dp_day] = last_dp.mech_cost_usd
                 new_data_points.pop()
         cumulative_profit = (
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
@@ -2529,7 +2505,7 @@ class FetchPerformanceSummaryBehaviour(
             existing_dp = existing_by_ts.get(mech_day_ts)
             if existing_dp is not None:
                 old_count = existing_dp.daily_mech_requests
-                old_cost = self._stored_mech_cost(existing_dp)
+                old_cost = existing_dp.mech_cost_usd
                 # Legacy points (persisted before ``daily_profit_raw`` was
                 # added) leave the field ``None``. Reconstruct it from the
                 # stored net so the merge does not silently zero the day's

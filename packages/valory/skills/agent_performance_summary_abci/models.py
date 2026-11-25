@@ -27,6 +27,7 @@ import tempfile
 import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import (
     Any,
@@ -57,6 +58,10 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
+
+# A mech request with no reported charge (on-chain requests, rows from before
+# mechs reported charges, subgraph-sourced requests) costs the flat 0.01 USD.
+DEFAULT_MECH_FEE_USD = Decimal("0.01")
 
 # Serialises every read-modify-write of the summary file: the leaderboard
 # refresh writes it from a worker thread. Module-level so that writers that
@@ -155,6 +160,15 @@ class PredictionHistory:
     items: List[Dict] = field(default_factory=list)
 
 
+def flat_mech_fee_usd(request_count: int) -> Decimal:
+    """Return what ``request_count`` mech requests with no known charge cost, in USD.
+
+    :param request_count: the number of requests
+    :return: the flat fee for each of them
+    """
+    return request_count * DEFAULT_MECH_FEE_USD
+
+
 @dataclass
 class ProfitDataPoint:
     """Single data point for profit over time chart."""
@@ -170,6 +184,17 @@ class ProfitDataPoint:
     # USD cost of the day's mech requests; ``None`` on points stored before
     # costs were recorded, which cost the flat fee per request.
     daily_mech_cost: Optional[float] = None
+
+    @property
+    def mech_cost_usd(self) -> Decimal:
+        """Return the day's mech cost in USD.
+
+        :return: the stored cost, or the flat fee per request for a point
+            stored before costs were recorded
+        """
+        if self.daily_mech_cost is None:
+            return flat_mech_fee_usd(self.daily_mech_requests)
+        return Decimal(str(self.daily_mech_cost))
 
 
 @dataclass
@@ -254,24 +279,6 @@ class OffchainDepositState:
     ROI now counts every mech request, off-chain ones included, at its
     charge, so deposits no longer enter it. The field stays so summaries
     stored with it keep loading and keep it on save.
-
-    Under the former pre-deposit-as-loss decision, every top-up to a Safe's
-    ``mapRequesterBalances`` on the BalanceTracker contract (the mech
-    marketplace only routes requests; the balance mapping and the
-    ``Deposit`` event live on the tracker) is booked as spent the moment
-    it lands on chain — the tracker has no requester-withdraw path, so
-    committed money is unrecoverable regardless of consumption.
-
-    ``total_deposited_wei`` is the cumulative wei-scaled sum of Deposit
-    event amounts. ``last_scanned_block`` is the highest block already
-    counted; the next cycle scans only ``last_scanned_block + 1`` and
-    above. ``last_scanned_block is None`` distinguishes "never scanned"
-    from a legitimate genesis-block checkpoint (matters on devnet/Hardhat
-    chains where block 0 is a real block).
-
-    For any Safe that has never called ``depositFor`` (i.e. every
-    production on-chain trader today), the state stays at its default
-    (``None`` checkpoint) and contributes nothing to the ROI cost side.
 
     Enforced invariants at construction time:
     - ``total_deposited_wei`` must be a non-negative integer.
@@ -680,11 +687,6 @@ class AgentPerformanceSummaryParams(BaseParams):
         )
         self.is_achievement_checker_enabled: bool = self._ensure(
             "is_achievement_checker_enabled", kwargs, bool
-        )
-        # BalanceTracker contract address. ROI no longer reads deposits;
-        # the param stays so existing agent and service configs still load.
-        self.balance_tracker_address: str = self._ensure(
-            "balance_tracker_address", kwargs, str
         )
         # Polygon always requires analytics; Gnosis uses the feature flag.
         # The env-var template grammar has no empty default, so unset arrives as None.
