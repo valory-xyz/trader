@@ -43,6 +43,7 @@ contracts:
 - valory/mech_marketplace:0.1.0:bafybeidk67435jzze4pyrqjixspubbsb2rvpe7jobnhttxavi3s3upu7ne
 - valory/balance_tracker:0.1.0:bafybeigg5z4wsms2p5c325j7hhognoyacyfb4s7gehm6opwjppeekkkyyi
 - valory/balance_tracker_fixed_price_native:0.1.0:bafybeie2y2wht5eq3lw2ptjtygjpjkxkzayjwjjbut74wsxtb575tlvyd4
+- valory/olas_mech:0.1.0:bafybeicvucufw3i2hni5sz5hwnsszklk36yxf6k34jrclb3x2d6giojchu
 - valory/escrow_payment_condition:0.1.0:bafybeihvatfnl5ttmuqjj5fehv7eblvcl2cqls66foaiwegw3u2qyk2heq
 - valory/did_registry:0.1.0:bafybeig7ppsh7qvutj5ci375inhmh47qujrzhydh4k3hqsppprlvy5vkpy
 - valory/nft_sales:0.1.0:bafybeiejb63z2kvh3gdyosmuc2ubguzpbmabxojwmilv7lumd7iqbzxbpy
