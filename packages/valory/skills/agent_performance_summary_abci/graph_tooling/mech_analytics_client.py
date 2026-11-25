@@ -45,8 +45,7 @@ _LOGGER = logging.getLogger(__name__)
 GNOSIS_CHAIN_ID = 100
 POLYGON_CHAIN_ID = 137
 
-# ``resolution_status`` of a request the mech never delivered. It was
-# never settled, so it costs nothing.
+# ``resolution_status`` of a request the mech never delivered.
 UNDELIVERED_STATUS = "undelivered"
 UNDELIVERED_CHARGE_USD = "0"
 

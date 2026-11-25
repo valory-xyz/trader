@@ -25,7 +25,7 @@ import json
 import os
 import tempfile
 import threading
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -59,8 +59,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
-# A mech request with no reported charge (on-chain requests, rows from before
-# mechs reported charges, subgraph-sourced requests) costs this flat fee.
+# What a mech request with no reported charge costs.
 DEFAULT_MECH_FEE_USD = Decimal("0.01")
 
 # Serialises every read-modify-write of the summary file: the leaderboard
@@ -197,6 +196,17 @@ class ProfitDataPoint:
 
 
 @dataclass
+class PendingMechRequest:
+    """A request past the watermark held back uncharged while the KPI counts it as open."""
+
+    title: str
+    timestamp: int
+    # The request's USD cost as a decimal string; ``None`` on entries stored
+    # before costs were recorded.
+    cost_usd: Optional[str] = None
+
+
+@dataclass
 class ProfitOverTimeData:
     """Profit over time data stored in agent_performance.json."""
 
@@ -213,10 +223,7 @@ class ProfitOverTimeData:
         0  # Watermark: max blockTimestamp of processed mech requests
     )
     schema_version: int = 0  # Bumped to trigger one-shot rebuild on cutovers
-    # Requests past the watermark held back uncharged while the KPI counts
-    # them as open; each entry is ``{"title": str, "timestamp": int,
-    # "cost_usd": str}`` (``cost_usd`` absent on entries stored before it).
-    pending_mech_requests: List[Dict[str, Any]] = field(default_factory=list)
+    pending_mech_requests: List[PendingMechRequest] = field(default_factory=list)
     last_residual_rebuild_ts: int = 0  # Unix timestamp, 0 if never
     residual_rebuild_backoff_days: int = 1  # Wait before the next residual rebuild
     # mech-analytics ids seen in the lookback window; ``None`` when untracked.
@@ -234,6 +241,10 @@ class ProfitOverTimeData:
                 for point in self.data_points
                 if isinstance(point, dict)
             ]
+        self.pending_mech_requests = [
+            PendingMechRequest(**entry) if isinstance(entry, dict) else entry
+            for entry in self.pending_mech_requests
+        ]
 
 
 @dataclass
@@ -269,49 +280,6 @@ class Achievements:
                 for key, value in self.items.items()
                 if isinstance(value, dict)
             }
-
-
-@dataclass
-class OffchainDepositState:
-    """Cumulative on-chain BalanceTracker Deposit tracking (no longer updated).
-
-    ROI now counts every mech request, off-chain ones included, at its
-    charge, so deposits no longer enter it. The field stays so summaries
-    stored with it keep loading and keep it on save.
-
-    Enforced invariants at construction time:
-    - ``total_deposited_wei`` must be a non-negative integer.
-    - ``last_scanned_block`` must be ``None`` or a non-negative integer.
-    """
-
-    total_deposited_wei: int = 0
-    last_scanned_block: Optional[int] = None
-
-    def __post_init__(self) -> None:
-        """Validate the persisted checkpoint fields."""
-        # Legacy summaries may carry the wei count as a JSON string; coerce
-        # it rather than reject the stored state.
-        if isinstance(self.total_deposited_wei, str):
-            self.total_deposited_wei = int(self.total_deposited_wei)
-        if not isinstance(self.total_deposited_wei, int):
-            raise TypeError(
-                f"total_deposited_wei must be int, got {type(self.total_deposited_wei).__name__}"
-            )
-        if self.total_deposited_wei < 0:
-            raise ValueError(
-                f"total_deposited_wei must be non-negative, got {self.total_deposited_wei}"
-            )
-        if self.last_scanned_block is not None:
-            if not isinstance(self.last_scanned_block, int):
-                raise TypeError(
-                    "last_scanned_block must be int or None, "
-                    f"got {type(self.last_scanned_block).__name__}"
-                )
-            if self.last_scanned_block < 0:
-                raise ValueError(
-                    "last_scanned_block must be non-negative, "
-                    f"got {self.last_scanned_block}"
-                )
 
 
 @dataclass(frozen=True)
@@ -517,7 +485,6 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
-    offchain_deposits: Optional[OffchainDepositState] = None
     leaderboard: Optional[LeaderboardData] = None
     activity_goal: Optional[ActivityGoal] = None
 
@@ -551,9 +518,6 @@ class AgentPerformanceSummary:
 
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)
-
-        if isinstance(self.offchain_deposits, dict):
-            self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
 
         if isinstance(self.leaderboard, dict):
             self.leaderboard = LeaderboardData.from_dict(self.leaderboard)
@@ -773,71 +737,36 @@ class SharedState(BaseSharedState):
 
         try:
             with open(file_path, "r") as f:
-                existing_data = AgentPerformanceSummary(**json.load(f))
-            return existing_data
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raise TypeError(f"expected a JSON object, got {type(raw).__name__}")
+            # Drop keys this build does not know, e.g. the retired
+            # ``offchain_deposits``, rather than reject the whole summary.
+            known = {
+                summary_field.name for summary_field in fields(AgentPerformanceSummary)
+            }
+            return AgentPerformanceSummary(
+                **{key: value for key, value in raw.items() if key in known}
+            )
         except (FileNotFoundError, json.JSONDecodeError) as e:
             self.context.logger.warning(
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
         except (TypeError, ValueError) as e:
-            # A nested ``__post_init__`` (e.g. the legacy
-            # ``OffchainDepositState``) rejected a persisted value. Degrade
-            # to a fresh summary, as for an unreadable file; the save path
-            # re-reads ``offchain_deposits`` with
-            # ``read_offchain_deposits_from_disk`` so the legacy field is
-            # still kept on save.
+            # A nested ``__post_init__`` rejected a persisted value. Degrade
+            # to a fresh summary, as for an unreadable file.
             self.context.logger.warning(
                 f"Persisted agent performance summary failed validation ({e}); "
                 "starting from a fresh summary."
             )
             return AgentPerformanceSummary()
 
-    def read_offchain_deposits_from_disk(self) -> Optional["OffchainDepositState"]:
-        """Return the persisted ``offchain_deposits`` sub-field with lenient parsing.
-
-        Bypasses ``AgentPerformanceSummary.__post_init__`` so a corrupt
-        sibling field (e.g. a bad ``Achievements`` or ``PredictionHistory``
-        entry that would otherwise degrade
-        ``read_existing_performance_summary`` to a fresh summary) can't
-        cascade into wiping this specific irreversible field.
-        ``_save_agent_performance_summary`` calls this before overwriting
-        so a stored ``offchain_deposits`` survives the cycle-end save under
-        any sibling-corruption path.
-
-        :return: the persisted ``OffchainDepositState`` if the file has a
-            valid entry, ``None`` if the file is missing, unreadable,
-            has no ``offchain_deposits`` key, or the field itself fails
-            validation. The final case is logged; the others are silent
-            (they overlap with the legitimate first-boot / never-scanned
-            path).
-        """
-        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
-
-        try:
-            with open(file_path, "r") as f:
-                raw = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
-
-        sub = raw.get("offchain_deposits") if isinstance(raw, dict) else None
-        if not isinstance(sub, dict):
-            return None
-
-        try:
-            return OffchainDepositState(**sub)
-        except (TypeError, ValueError) as e:
-            self.context.logger.warning(
-                f"Persisted offchain_deposits failed validation ({e}); "
-                "leaving it unpreserved on this save."
-            )
-            return None
-
     def read_achievements_from_disk(self) -> Optional[Achievements]:
         """Return the persisted ``achievements`` sub-field with lenient parsing.
 
-        Sibling-agnostic like ``read_offchain_deposits_from_disk``: a corrupt
-        sibling field must not drop the backlog-guard watermark on save.
+        Sibling-agnostic: a corrupt sibling field must not drop the
+        backlog-guard watermark on save.
 
         :return: the persisted ``Achievements``, or ``None`` if the file is
             missing, unreadable, has no ``achievements`` key, or the field

@@ -92,6 +92,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     LeaderboardWindowRank,
     NotRankedReason,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
+    PendingMechRequest,
     PerformanceMetricsData,
     PerformanceStatsData,
     PredictionHistory,
@@ -442,17 +443,12 @@ class FetchPerformanceSummaryBehaviour(
         self._partial_roi: Optional[float] = None
         self._total_mech_requests: Optional[int] = None
         self._open_market_requests: Optional[int] = None
-        # ``(title, timestamp)`` of each request counted in
-        # ``_open_market_requests``; ``None`` until that count is computed.
         self._open_market_request_keys: Optional[List[Tuple[str, int]]] = None
-        # USD cost of the requests counted in ``_total_mech_requests``,
-        # ``_open_market_requests`` and ``_settled_mech_requests_count``;
-        # ``None`` alongside an unknown count.
+        # ``None`` alongside an unknown count
         self._total_mech_cost_usd: Optional[Decimal] = None
         self._open_market_cost_usd: Optional[Decimal] = None
         self._settled_mech_cost_usd: Optional[Decimal] = None
         self._mech_request_lookup: Optional[dict] = None
-        # Each fetched request's cost, keyed by ``(title, timestamp)``.
         self._request_costs: MechRequestCosts = {}
         self._fetched_mech_requests: List[dict] = []
         self._update_interval: int = UPDATE_INTERVAL
@@ -785,19 +781,16 @@ class FetchPerformanceSummaryBehaviour(
 
         # Keep the requests for still-open markets, not just their count, so
         # the profit series holds back exactly the requests counted here.
-        open_requests: List[dict] = []
         open_request_keys: List[Tuple[str, int]] = []
+        open_cost = Decimal(0)
         for request in last_four_days_requests:
             key = self._mech_request_key(request)
             if key[0] and key[0] in open_market_titles:
-                open_requests.append(request)
                 open_request_keys.append(key)
+                open_cost += self._mech_request_cost_usd(request)
         self._open_market_request_keys = open_request_keys
         self._open_market_requests = len(open_request_keys)
-        self._open_market_cost_usd = sum(
-            (self._mech_request_cost_usd(request) for request in open_requests),
-            Decimal(0),
-        )
+        self._open_market_cost_usd = open_cost
         self.context.logger.info(
             f"{self._open_market_requests=}, {self._open_market_cost_usd=}"
         )
@@ -1761,30 +1754,35 @@ class FetchPerformanceSummaryBehaviour(
         return chargeable, held_back
 
     @staticmethod
-    def _as_pending_mech_requests(
+    def _split_off_held_back_costs(
         held_back: List[Tuple[str, int]],
         request_costs: MechRequestCosts,
-    ) -> List[Dict[str, Any]]:
-        """Serialise held-back requests for ``ProfitOverTimeData.pending_mech_requests``.
+    ) -> Tuple[List[PendingMechRequest], MechRequestCosts]:
+        """Split the held-back requests' costs from those left to charge.
 
         :param held_back: ``(title, timestamp)`` of each held-back request
         :param request_costs: each request's cost by ``(title, timestamp)``;
-            the held-back requests' costs are removed from it
-        :return: the persisted ``{"title", "timestamp", "cost_usd"}`` entries
+            not modified
+        :return: the held-back requests with their costs, and the costs of
+            the requests left to charge
         """
-        return [
-            {
-                "title": title,
-                "timestamp": ts,
-                "cost_usd": str(_take_cost(request_costs, (title, ts))),
-            }
+        remaining: MechRequestCosts = {
+            key: list(values) for key, values in request_costs.items()
+        }
+        pending = [
+            PendingMechRequest(
+                title=title,
+                timestamp=ts,
+                cost_usd=str(_take_cost(remaining, (title, ts))),
+            )
             for title, ts in held_back
         ]
+        return pending, remaining
 
     def _costs_by_key(
         self,
         mech_requests: List[dict],
-        pending: Optional[List[Dict[str, Any]]] = None,
+        pending: Optional[List[PendingMechRequest]] = None,
     ) -> MechRequestCosts:
         """Return each request's cost keyed by ``(title, timestamp)``.
 
@@ -1795,8 +1793,8 @@ class FetchPerformanceSummaryBehaviour(
         """
         costs: MechRequestCosts = {}
         for entry in pending or []:
-            cost = _usd_amount(entry.get("cost_usd"))
-            key = (entry["title"], int(entry["timestamp"]))
+            cost = _usd_amount(entry.cost_usd)
+            key = (entry.title, int(entry.timestamp))
             costs.setdefault(key, []).append(_cost_or_flat_fee(cost, 1))
         for request in mech_requests:
             key = self._mech_request_key(request)
@@ -2150,10 +2148,9 @@ class FetchPerformanceSummaryBehaviour(
             ]
         )
 
-        request_costs: MechRequestCosts = {
-            key: list(values) for key, values in self._request_costs.items()
-        }
-        pending_mech_requests = self._as_pending_mech_requests(held_back, request_costs)
+        pending_mech_requests, request_costs = self._split_off_held_back_costs(
+            held_back, self._request_costs
+        )
 
         # Timestamp-based mech-to-bet attribution
         (
@@ -2394,7 +2391,7 @@ class FetchPerformanceSummaryBehaviour(
             key for key in map(self._mech_request_key, new_mech_requests) if key[1]
         ]
         previously_pending = [
-            (request["title"], int(request["timestamp"]))
+            (request.title, int(request.timestamp))
             for request in existing_data.pending_mech_requests
         ]
         mech_request_lookup, held_back = self._hold_back_open_requests(
@@ -2414,10 +2411,10 @@ class FetchPerformanceSummaryBehaviour(
             )
             return existing_data
 
-        request_costs = self._costs_by_key(
-            new_mech_requests, existing_data.pending_mech_requests
+        pending_mech_requests, request_costs = self._split_off_held_back_costs(
+            held_back,
+            self._costs_by_key(new_mech_requests, existing_data.pending_mech_requests),
         )
-        pending_mech_requests = self._as_pending_mech_requests(held_back, request_costs)
 
         # Timestamp-based mech-to-bet attribution for new stats
         (
@@ -2474,9 +2471,7 @@ class FetchPerformanceSummaryBehaviour(
             )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
-            # Combine this run's fresh attributions with the popped day's
-            # stored count. Direct ``requests_by_day`` lookup avoids the
-            # discarded ``mech_fees`` return from ``_apply_mech_fees``.
+            # Add this run's fresh count and cost to the popped day's carried ones.
             fresh_count = requests_by_day.get(date_timestamp, 0)
             carried, carried_cost = carry_by_day_idx.pop(
                 date_timestamp // SECONDS_PER_DAY, (0, Decimal(0))
@@ -2769,8 +2764,8 @@ class FetchPerformanceSummaryBehaviour(
 
         # Achievements are written by ``UpdateAchievementsBehaviour``; losing
         # them here would reset the backlog-guard watermark. Re-read them
-        # leniently, like ``offchain_deposits`` below, so a corrupt sibling
-        # that degraded ``existing_data`` cannot wipe them.
+        # leniently, so a corrupt sibling that degraded ``existing_data``
+        # cannot wipe them.
         agent_performance_summary.achievements = (
             self.shared_state.read_achievements_from_disk()
         )
@@ -2779,12 +2774,6 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance_summary.activity_goal = (
             self.shared_state.read_activity_goal_from_disk()
         )
-
-        # Keep a stored ``offchain_deposits`` (no longer updated): the rebuilt
-        # summary omits it, so re-read it leniently from disk.
-        disk_offchain = self.shared_state.read_offchain_deposits_from_disk()
-        if disk_offchain is not None:
-            agent_performance_summary.offchain_deposits = disk_offchain
 
         # Track whether any section fell back to existing data
         preserved = False

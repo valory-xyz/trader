@@ -48,11 +48,11 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     GnosisStakingSubgraph,
     LeaderboardData,
     LeaderboardWindowRank,
-    OffchainDepositState,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
     OmenSubgraph,
     OpenMarketsSubgraph,
+    PendingMechRequest,
     PerformanceMetricsData,
     PerformanceStatsData,
     PolygonMechSubgraph,
@@ -372,7 +372,7 @@ class TestProfitOverTimeData:
         pot = ProfitOverTimeData(
             last_updated=1704067200,
             total_days=0,
-            pending_mech_requests=[{"title": "Q1", "timestamp": 1704067100}],
+            pending_mech_requests=[{"title": "Q1", "timestamp": 1704067100}],  # type: ignore[list-item]
             last_residual_rebuild_ts=1704000000,
         )
         summary = AgentPerformanceSummary(profit_over_time=pot)
@@ -380,6 +380,7 @@ class TestProfitOverTimeData:
         loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
 
         assert loaded.profit_over_time == pot
+        assert pot.pending_mech_requests == [PendingMechRequest("Q1", 1704067100)]
 
     def test_v2_file_without_new_fields_loads(self) -> None:
         """A series stored before the two fields existed still loads, at v2."""
@@ -524,15 +525,6 @@ class TestAgentPerformanceSummary:
         assert s.prediction_history is None
         assert s.profit_over_time is None
         assert s.achievements is None
-
-    def test_summary_stored_with_offchain_deposits_still_loads(self) -> None:
-        """A summary written while deposits were tracked loads and keeps them."""
-        s = AgentPerformanceSummary(
-            offchain_deposits={"total_deposited_wei": 5, "last_scanned_block": 9}  # type: ignore[arg-type]
-        )
-        assert s.offchain_deposits == OffchainDepositState(
-            total_deposited_wei=5, last_scanned_block=9
-        )
 
     def test_post_init_converts_agent_details_dict(self) -> None:
         """__post_init__ converts agent_details dict to AgentDetails."""
@@ -1209,6 +1201,43 @@ class TestSharedState:
         assert isinstance(result, AgentPerformanceSummary)
         assert result.timestamp == 1700000000
         assert result.agent_behavior == "active"
+
+    def test_read_existing_performance_summary_drops_unknown_keys(
+        self, tmp_path: Path
+    ) -> None:
+        """A key this build does not know, like the retired deposit state, is dropped."""
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps(
+                {
+                    "agent_behavior": "active",
+                    "offchain_deposits": {"total_deposited_wei": 5},
+                }
+            )
+        )
+
+        result = state.read_existing_performance_summary()
+
+        assert result == AgentPerformanceSummary(agent_behavior="active")
+        state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_read_existing_performance_summary_non_object_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A file holding something other than a JSON object reads as a fresh summary."""
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text("[]")
+
+        result = state.read_existing_performance_summary()
+
+        assert result == AgentPerformanceSummary()
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_read_existing_performance_summary_file_not_found(
         self, tmp_path: Path
@@ -1960,7 +1989,7 @@ class TestActivityGoalPersistence:
         self._seed(
             tmp_path,
             {
-                "offchain_deposits": {"total_deposited_wei": -1},
+                "prediction_history": {"not_a_field": 1},
                 "activity_goal": ACTIVITY_GOAL_BLOCK,
             },
         )
