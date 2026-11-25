@@ -164,7 +164,7 @@ connections:
 - valory/polymarket_client:0.1.0:bafybeiajfdzdrf7ki4msh5kt2czbsxla3lbsler3ae3lvvp6br6yxttkeu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeifv2ajl76hvtpdtcv2alkislkqr5t7jcyspd5cimmnkfhnyemeux4
-- valory/market_maker:0.1.0:bafybeiaogkujiilubosloromkikuhltgiiadjvtzw2b5p5hc3klzi4m4nq
+- valory/market_maker:0.1.0:bafybeiafcmwayleooa4hoteuyavggz4qjmlj55tzx6xapcmgwb2e5f7f7i
 - valory/erc20:0.1.0:bafybeigafpclygxbid3tbtavpjtz4rxqi4j7uwqlhxbumdm6itzmat6m3m
 - valory/multisend:0.1.0:bafybeibyx4c6bpkragj5j2augv27til6xrdlnpgyrlttg5dsccxje4yis4
 - valory/mech:0.1.0:bafybeiebw4d65jy66nicbjdkkx5b4ifsj4ocxh6dymv4zvd5h3hxd6enp4
@@ -172,7 +172,7 @@ contracts:
 - valory/realitio:0.1.0:bafybeibfy6dqkwsz4xersouotswcug27awkvtsmjlo3r7b476qgeujn3eu
 - valory/realitio_proxy:0.1.0:bafybeibutej7uzucill5ohb3xxu245vo32kg5vchpqondwdfomixx2psba
 - valory/agent_registry:0.1.0:bafybeiaf5tfymnq6brtn3bzf2eg52uro7fzgkjcbwcypfbvlkghsozsqau
-- valory/deposit_wallet:0.1.0:bafybeifmw77pznzla6zwq7mfncdzboxmlmm5ffmkvlxlqfg442oypfqjje
+- valory/deposit_wallet:0.1.0:bafybeiba74oz5wxq3kxtdksngv3qgl4vbynprcimsnriqfk6h5puecbtxq
 protocols:
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
@@ -184,7 +184,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeigofutmfhbw4yzrpruyv5pbqd4lki4ymp3bfglhurybl3ukgohjxu
 - valory/transaction_settlement_abci:0.1.0:bafybeiamnm26osevzjawbjx3rabeibnbkptdckadlucz6ef5u4jtgtlzc4
 - valory/mech_interact_abci:0.1.0:bafybeiaaju5qf23rvpuwuh42q2vg5tjq3gvlnqf2gnts4nlzhv4752xvhy
-- valory/staking_abci:0.1.0:bafybeiavki24n74w5gb3kcyhhnrotfvy4jffrmgo2yof6a5xyztditkjea
+- valory/staking_abci:0.1.0:bafybeiacwtkg4rusnrp4ur7a3r4yqrp2fwlabohna7246mp2zea5z5obum
 - valory/agent_performance_summary_abci:0.1.0:bafybeid6w7ujg67le3nicojozr2cxwfxwoawbe2bm4v67frftsms3topq4
 - valory/chatui_abci:0.1.0:bafybeieht3d7i4nwdz2okconv7khigtrj52yvxajlfktrnq6qhn4hspsay
 - valory/agent_topup_abci:0.1.0:bafybeihuc6oi3gj5eouh5kpjfdwpbf3czcwphzm4z7ivligul52ufp5g4a
