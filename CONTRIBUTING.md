@@ -24,6 +24,7 @@ For a clean workflow, run checks in the following order before making a PR or pu
 **Only run following if you have modified a file in `packages/`**
 - make generators
 - make common-checks-1
+- python scripts/hash_lock/hash_lock.py revert (pull requests leave lock-managed hash values unchanged; see "Package hashes" in `README.md`)
 
 **else run** (copyright headers only — `make generators` already covers this when you've edited `packages/`)
 - tox -e copyright-check
