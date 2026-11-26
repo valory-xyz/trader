@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiblazqfz7vxuq4zxbsfprymzdtjgrn7iuq3ou2ivsgrkax35bts6a
+agent: valory/trader:0.1.0:bafybeidhdk7craqa6uqdt2t3dhqu6tjtbtga4ba4sptpmo2s4rre3er4hy
 number_of_agents: 1
 deployment:
   agent:
@@ -173,7 +173,6 @@ models:
       native_gas_reserve: ${NATIVE_GAS_RESERVE:int:3200000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
-      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x5C50ebc17d002A4484585C8fbf62f51953493c0B}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
       olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
@@ -189,7 +188,7 @@ models:
       enable_market_ranking: ${ENABLE_MARKET_RANKING:bool:true}
       ranking_min_score: ${RANKING_MIN_SCORE:float:0.5}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
-      delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"token_usdc":10000}}
+      delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"token_usdc":80000}}
       marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
   benchmark_tool:
     args:

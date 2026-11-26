@@ -26,12 +26,12 @@ contracts: []
 protocols:
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeihucjgkvpy3u7mwbwl7nos6ky6kcpau5zzmprdruyttl4vdzaxjpe
-- valory/decision_maker_abci:0.1.0:bafybeieun4hmdsnsfwtmeeyaavm37bvhrwjbunkabtdmca65ny5ia6zlk4
-- valory/staking_abci:0.1.0:bafybeiemaa62whlcbqia34dla3amnm5vwvnlycdo3lxozumtjs6bgi7vs4
-- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
-- valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
+- valory/abstract_round_abci:0.1.0:bafybeidvedqepygcbmztrglxlxq2tpbfwnnwjpzenjhx6zrrxbu6nloxe4
+- valory/agent_performance_summary_abci:0.1.0:bafybeih7zzfsszbe6574qchfrtwzogleohian53eqikahgi3cef45qipyu
+- valory/decision_maker_abci:0.1.0:bafybeig2cyjaf4x42zmolapeqnffefjtj32pn5o7vtygamwzfc5upg2uje
+- valory/staking_abci:0.1.0:bafybeiacwtkg4rusnrp4ur7a3r4yqrp2fwlabohna7246mp2zea5z5obum
+- valory/agent_topup_abci:0.1.0:bafybeihuc6oi3gj5eouh5kpjfdwpbf3czcwphzm4z7ivligul52ufp5g4a
+- valory/mech_interact_abci:0.1.0:bafybeialodsyweci4xtwjufhykz45nuof6ja24desmdzri5mgnb5azo2t4
 behaviours:
   main:
     args: {}

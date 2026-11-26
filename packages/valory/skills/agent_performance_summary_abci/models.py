@@ -22,11 +22,13 @@
 
 import builtins
 import json
+import logging
 import os
 import tempfile
 import threading
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import (
     Any,
@@ -56,7 +58,14 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
+# Summary keys from earlier builds that are dropped without a warning.
+RETIRED_SUMMARY_KEYS = frozenset({"offchain_deposits"})
+
+# What a mech request with no reported charge costs.
+DEFAULT_MECH_FEE_USD = Decimal("0.01")
 
 # Serialises every read-modify-write of the summary file: the leaderboard
 # refresh writes it from a worker thread. Module-level so that writers that
@@ -80,7 +89,7 @@ LEADERBOARD_CLOCK_SKEW_SECONDS = 300
 LEADERBOARD_PAGE_PATH = "/leaderboard"
 
 # Bump to force a one-shot rebuild of stored profit_over_time.
-PROFIT_OVER_TIME_SCHEMA_VERSION = 3
+PROFIT_OVER_TIME_SCHEMA_VERSION = 4
 
 
 @dataclass
@@ -155,6 +164,15 @@ class PredictionHistory:
     items: List[Dict] = field(default_factory=list)
 
 
+def flat_mech_fee_usd(request_count: int) -> Decimal:
+    """Return what ``request_count`` mech requests with no known charge cost, in USD.
+
+    :param request_count: the number of requests
+    :return: the total flat fee for ``request_count`` requests
+    """
+    return request_count * DEFAULT_MECH_FEE_USD
+
+
 @dataclass
 class ProfitDataPoint:
     """Single data point for profit over time chart."""
@@ -167,6 +185,54 @@ class ProfitDataPoint:
     daily_profit_raw: Optional[float] = (
         None  # Gross daily profit from subgraph (before fees)
     )
+    # USD cost of the day's mech requests; see ``mech_cost_usd`` for ``None``
+    daily_mech_cost: Optional[float] = None
+
+    @property
+    def mech_cost_usd(self) -> Decimal:
+        """Return the day's mech cost in USD.
+
+        :return: the stored cost, or the flat fee per request for a point
+            stored before costs were recorded
+        """
+        if self.daily_mech_cost is None:
+            return flat_mech_fee_usd(self.daily_mech_requests)
+        return Decimal(str(self.daily_mech_cost))
+
+
+@dataclass
+class PendingMechRequest:
+    """A request past the watermark held back uncharged while the KPI counts it as open."""
+
+    title: str
+    timestamp: int
+    # The request's USD cost as a decimal string; ``None`` on entries stored
+    # before costs were recorded.
+    cost_usd: Optional[str] = None
+
+
+def _coerce_pending_mech_requests(entries: List[Any]) -> List[PendingMechRequest]:
+    """Return stored held-back entries as ``PendingMechRequest``, skipping malformed ones.
+
+    :param entries: the stored entries, dicts or ``PendingMechRequest``
+    :return: the usable entries; a malformed one is logged and skipped so it
+        neither crashes the next tick nor discards the whole series
+    """
+    coerced: List[PendingMechRequest] = []
+    for entry in entries:
+        if isinstance(entry, PendingMechRequest):
+            coerced.append(entry)
+        elif isinstance(entry, dict) and "title" in entry and "timestamp" in entry:
+            coerced.append(
+                PendingMechRequest(
+                    title=entry["title"],
+                    timestamp=entry["timestamp"],
+                    cost_usd=entry.get("cost_usd"),
+                )
+            )
+        else:
+            _LOGGER.warning(f"Skipping malformed pending mech request {entry!r}")
+    return coerced
 
 
 @dataclass
@@ -186,9 +252,7 @@ class ProfitOverTimeData:
         0  # Watermark: max blockTimestamp of processed mech requests
     )
     schema_version: int = 0  # Bumped to trigger one-shot rebuild on cutovers
-    # Requests past the watermark held back uncharged while the KPI counts
-    # them as open; each entry is ``{"title": str, "timestamp": int}``.
-    pending_mech_requests: List[Dict[str, Any]] = field(default_factory=list)
+    pending_mech_requests: List[PendingMechRequest] = field(default_factory=list)
     last_residual_rebuild_ts: int = 0  # Unix timestamp, 0 if never
     residual_rebuild_backoff_days: int = 1  # Wait before the next residual rebuild
     # mech-analytics ids seen in the lookback window; ``None`` when untracked.
@@ -206,6 +270,9 @@ class ProfitOverTimeData:
                 for point in self.data_points
                 if isinstance(point, dict)
             ]
+        self.pending_mech_requests = _coerce_pending_mech_requests(
+            self.pending_mech_requests
+        )
 
 
 @dataclass
@@ -241,65 +308,6 @@ class Achievements:
                 for key, value in self.items.items()
                 if isinstance(value, dict)
             }
-
-
-@dataclass
-class OffchainDepositState:
-    """Cumulative on-chain BalanceTracker Deposit tracking for pre-deposit-as-loss ROI.
-
-    Under the pre-deposit-as-loss decision, every top-up to a Safe's
-    ``mapRequesterBalances`` on the BalanceTracker contract (the mech
-    marketplace only routes requests; the balance mapping and the
-    ``Deposit`` event live on the tracker) is booked as spent the moment
-    it lands on chain — the tracker has no requester-withdraw path, so
-    committed money is unrecoverable regardless of consumption.
-
-    ``total_deposited_wei`` is the cumulative wei-scaled sum of Deposit
-    event amounts. ``last_scanned_block`` is the highest block already
-    counted; the next cycle scans only ``last_scanned_block + 1`` and
-    above. ``last_scanned_block is None`` distinguishes "never scanned"
-    from a legitimate genesis-block checkpoint (matters on devnet/Hardhat
-    chains where block 0 is a real block).
-
-    For any Safe that has never called ``depositFor`` (i.e. every
-    production on-chain trader today), the state stays at its default
-    (``None`` checkpoint) and contributes nothing to the ROI cost side.
-
-    Enforced invariants at construction time:
-    - ``total_deposited_wei`` must be a non-negative integer.
-    - ``last_scanned_block`` must be ``None`` or a non-negative integer.
-    """
-
-    total_deposited_wei: int = 0
-    last_scanned_block: Optional[int] = None
-
-    def __post_init__(self) -> None:
-        """Validate the persisted checkpoint fields."""
-        # Defensive: some future writer may round-trip the wei count
-        # through JSON as a string; coerce transparently rather than
-        # rejecting. Not driven by any real prior on-disk data — this
-        # dataclass is new in this PR.
-        if isinstance(self.total_deposited_wei, str):
-            self.total_deposited_wei = int(self.total_deposited_wei)
-        if not isinstance(self.total_deposited_wei, int):
-            raise TypeError(
-                f"total_deposited_wei must be int, got {type(self.total_deposited_wei).__name__}"
-            )
-        if self.total_deposited_wei < 0:
-            raise ValueError(
-                f"total_deposited_wei must be non-negative, got {self.total_deposited_wei}"
-            )
-        if self.last_scanned_block is not None:
-            if not isinstance(self.last_scanned_block, int):
-                raise TypeError(
-                    "last_scanned_block must be int or None, "
-                    f"got {type(self.last_scanned_block).__name__}"
-                )
-            if self.last_scanned_block < 0:
-                raise ValueError(
-                    "last_scanned_block must be non-negative, "
-                    f"got {self.last_scanned_block}"
-                )
 
 
 @dataclass(frozen=True)
@@ -505,7 +513,6 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
-    offchain_deposits: Optional[OffchainDepositState] = None
     leaderboard: Optional[LeaderboardData] = None
     activity_goal: Optional[ActivityGoal] = None
 
@@ -539,9 +546,6 @@ class AgentPerformanceSummary:
 
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)
-
-        if isinstance(self.offchain_deposits, dict):
-            self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
 
         if isinstance(self.leaderboard, dict):
             self.leaderboard = LeaderboardData.from_dict(self.leaderboard)
@@ -673,16 +677,6 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_achievement_checker_enabled: bool = self._ensure(
             "is_achievement_checker_enabled", kwargs, bool
         )
-        # BalanceTracker contract address for pre-deposit-as-loss ROI
-        # accounting. Empty or the zero address disables the Deposit-event
-        # scan; the helper falls back to the cached total (see
-        # ``_fetch_offchain_prepaid_wei``). Kept as a trader-local skill
-        # param on purpose — this is an ROI-accounting concern, not a
-        # mech-routing concern, so it does not belong on
-        # ``mech_marketplace_config``.
-        self.balance_tracker_address: str = self._ensure(
-            "balance_tracker_address", kwargs, str
-        )
         # Polygon always requires analytics; Gnosis uses the feature flag.
         # The env-var template grammar has no empty default, so unset arrives as None.
         self.mech_analytics_url: str = (
@@ -771,75 +765,43 @@ class SharedState(BaseSharedState):
 
         try:
             with open(file_path, "r") as f:
-                existing_data = AgentPerformanceSummary(**json.load(f))
-            return existing_data
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raise TypeError(f"expected a JSON object, got {type(raw).__name__}")
+            # Drop keys this build does not know rather than reject the whole
+            # summary; the next save erases them, so name any unexpected one.
+            known = {
+                summary_field.name for summary_field in fields(AgentPerformanceSummary)
+            }
+            unexpected = set(raw) - known - RETIRED_SUMMARY_KEYS
+            if unexpected:
+                self.context.logger.warning(
+                    "Dropping unknown agent performance summary keys "
+                    f"{sorted(unexpected)}; they are not kept on the next save."
+                )
+            return AgentPerformanceSummary(
+                **{key: value for key, value in raw.items() if key in known}
+            )
         except (FileNotFoundError, json.JSONDecodeError) as e:
             self.context.logger.warning(
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
         except (TypeError, ValueError) as e:
-            # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
-            # rejected a persisted value. Previously no field could raise
-            # from the reader; now that we persist typed state, one bad
-            # entry could brick every read. Degrade to a fresh summary
-            # rather than propagate — same behaviour as an unreadable
-            # file. Callers that persist irreversible state
-            # (``offchain_deposits.total_deposited_wei``) MUST NOT use the
-            # degraded return value to derive an on-disk write for that
-            # state — see ``read_offchain_deposits_from_disk`` for the
-            # sibling-agnostic re-read used in the cycle-end save path.
+            # The file is not a JSON object, or a nested ``__post_init__``
+            # rejected a persisted value. Degrade to a fresh summary, as for
+            # an unreadable file.
             self.context.logger.warning(
                 f"Persisted agent performance summary failed validation ({e}); "
                 "starting from a fresh summary."
             )
             return AgentPerformanceSummary()
 
-    def read_offchain_deposits_from_disk(self) -> Optional["OffchainDepositState"]:
-        """Return the persisted ``offchain_deposits`` sub-field with lenient parsing.
-
-        Bypasses ``AgentPerformanceSummary.__post_init__`` so a corrupt
-        sibling field (e.g. a bad ``Achievements`` or ``PredictionHistory``
-        entry that would otherwise degrade
-        ``read_existing_performance_summary`` to a fresh summary) can't
-        cascade into wiping this specific irreversible field.
-        ``_save_agent_performance_summary`` calls this before overwriting
-        so the mid-cycle write from ``_fetch_offchain_prepaid_wei``
-        survives the cycle-end save under any sibling-corruption path.
-
-        :return: the persisted ``OffchainDepositState`` if the file has a
-            valid entry, ``None`` if the file is missing, unreadable,
-            has no ``offchain_deposits`` key, or the field itself fails
-            validation. The final case is logged; the others are silent
-            (they overlap with the legitimate first-boot / never-scanned
-            path).
-        """
-        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
-
-        try:
-            with open(file_path, "r") as f:
-                raw = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
-
-        sub = raw.get("offchain_deposits") if isinstance(raw, dict) else None
-        if not isinstance(sub, dict):
-            return None
-
-        try:
-            return OffchainDepositState(**sub)
-        except (TypeError, ValueError) as e:
-            self.context.logger.warning(
-                f"Persisted offchain_deposits failed validation ({e}); "
-                "leaving it unpreserved on this save."
-            )
-            return None
-
     def read_achievements_from_disk(self) -> Optional[Achievements]:
         """Return the persisted ``achievements`` sub-field with lenient parsing.
 
-        Sibling-agnostic like ``read_offchain_deposits_from_disk``: a corrupt
-        sibling field must not drop the backlog-guard watermark on save.
+        Sibling-agnostic: a corrupt sibling field must not drop the
+        backlog-guard watermark on save.
 
         :return: the persisted ``Achievements``, or ``None`` if the file is
             missing, unreadable, has no ``achievements`` key, or the field
@@ -899,45 +861,12 @@ class SharedState(BaseSharedState):
         """
         return read_activity_goal(self.params.store_path)
 
-    def write_offchain_deposits_to_disk(self, state: "OffchainDepositState") -> None:
-        """Atomic-write ``offchain_deposits`` to disk, preserving sibling fields.
-
-        Mirrors ``read_offchain_deposits_from_disk`` on the write side.
-        Reads the raw JSON dict (bypassing every dataclass
-        ``__post_init__``), updates only the ``offchain_deposits`` key,
-        writes back atomically via tempfile + ``os.replace``.
-        ``_fetch_offchain_prepaid_wei`` uses this instead of
-        ``overwrite_performance_summary(summary)`` because the summary
-        read it would otherwise pair with can silently degrade to a
-        fresh dataclass on any nested-field ``__post_init__`` raise,
-        which would then wipe every sibling field on disk (metrics,
-        agent_details, prediction_history, ...) during the mid-cycle
-        checkpoint write. Split-write keeps our checkpoint safe without
-        depending on other fields' validation state.
-
-        If the file is missing or unreadable, writes a minimal
-        ``{"offchain_deposits": ...}`` — the operator has explicitly
-        opted in to off-chain accounting at this point, so keeping the
-        checkpoint alive is more important than refusing to write over
-        a corrupt file. The next cycle-end
-        ``_save_agent_performance_summary`` will re-populate the sibling
-        fields from live data.
-
-        :param state: the ``OffchainDepositState`` to persist.
-        """
-        write_performance_summary_key(
-            self.params.store_path, "offchain_deposits", asdict(state)
-        )
-
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file atomically.
 
         Uses a same-directory temp file + ``os.replace`` so a mid-write
         crash (docker stop -t 0, OOM, disk full) can't leave the file
-        truncated. Matters more than for the previous callers of this
-        method: this PR is the first to persist irreversible state
-        (``offchain_deposits.total_deposited_wei``) that cannot be
-        re-derived from the subgraph.
+        truncated.
 
         The ``leaderboard`` section is owned by the leaderboard refresh, which
         may have written it from its worker thread since the caller read the

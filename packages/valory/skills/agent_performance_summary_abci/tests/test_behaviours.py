@@ -24,6 +24,7 @@ import json
 import threading
 from contextlib import ExitStack
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -34,12 +35,10 @@ from requests import Timeout as RequestsTimeout
 
 from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
-    DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LEADERBOARD_REFRESH_INTERVAL,
@@ -50,7 +49,6 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     MIN_TRADES_FOR_ROI_DISPLAY,
     MORE_TRADES_NEEDED_TEXT,
     NA,
-    OFFCHAIN_MAX_SCAN_RANGE,
     OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
     OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD,
     PERCENTAGE_FACTOR,
@@ -87,12 +85,13 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    DEFAULT_MECH_FEE_USD,
     LEADERBOARD_WINDOWS,
     LeaderboardData,
     LeaderboardWindow,
     LeaderboardWindowRank,
-    OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
+    PendingMechRequest,
     PerformanceMetricsData,
     PredictionHistory,
     ProfitDataPoint,
@@ -112,11 +111,14 @@ from packages.valory.skills.agent_performance_summary_abci.tests.constants impor
 # Test helpers
 # ---------------------------------------------------------------------------
 
-# Sentinel for optional-defaulted params where ``None`` is a real caller
-# value. Used by the save-summary helper to distinguish "caller didn't
-# pass anything, mirror the existing summary's offchain_deposits" from
-# "caller passed ``None`` explicitly (simulating a raw-disk-read miss)".
-_UNSET = object()
+# The flat fee as a held-back request without a reported charge stores it,
+# and as the series' float fields hold it.
+FLAT_FEE_USD_STR = str(DEFAULT_MECH_FEE_USD)
+FLAT_FEE_USD_FLOAT = float(DEFAULT_MECH_FEE_USD)
+# A sub-cent charge as mech-analytics serves it.
+CHARGE_A = "0.0073"
+# A stored day's cost that differs from its request count times the flat fee.
+STORED_COST = 0.0042
 
 
 class _DiskSharedState(SharedState):
@@ -159,8 +161,12 @@ def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
     b._total_mech_requests = None
     b._open_market_requests = None
     b._open_market_request_keys = None
+    b._total_mech_cost_usd = None
+    b._open_market_cost_usd = None
+    b._settled_mech_cost_usd = None
     b._mech_request_lookup = None
     b._fetched_mech_requests = []
+    b._request_costs = {}
     b._update_interval = UPDATE_INTERVAL
     b._last_update_timestamp = 0
     b._settled_mech_requests_count = 0
@@ -191,9 +197,6 @@ def _mock_context(
     params.is_agent_performance_summary_enabled = True
     params.is_achievement_checker_enabled = True
     params.mech_chain_id = mech_chain_id
-    # Sensible non-zero default; tests that care about the zero-address
-    # short-circuit override this explicitly.
-    params.balance_tracker_address = "0x000000000000000000000000000000000000BEEF"
     ctx.params = params
 
     synced_data = MagicMock()
@@ -258,16 +261,12 @@ class TestModuleConstants:
     """Tests for module-level constants."""
 
     def test_default_mech_fee(self) -> None:
-        """DEFAULT_MECH_FEE is 0.01 ETH in wei."""
-        assert DEFAULT_MECH_FEE == 1e16
+        """A request without a reported charge costs 0.01 USD."""
+        assert DEFAULT_MECH_FEE_USD == Decimal("0.01")
 
-    def test_profit_over_time_schema_version_ge_3(self) -> None:
-        """Schema-version floor is at least 3 (rebuild-on-load contract).
-
-        A revert of the bump would leave every series that skipped
-        untraded mech requests unrepaired.
-        """
-        assert PROFIT_OVER_TIME_SCHEMA_VERSION >= 3
+    def test_profit_over_time_schema_version_ge_4(self) -> None:
+        """Schema-version floor is at least 4, so stored series are rebuilt at their charges."""
+        assert PROFIT_OVER_TIME_SCHEMA_VERSION >= 4
 
     def test_question_data_separator(self) -> None:
         """QUESTION_DATA_SEPARATOR is the unit separator character."""
@@ -1510,8 +1509,8 @@ class TestMatchMechRequestsToDays:
         ]
         lookup = {"Q1": [1699999900]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert fees_by_day == {1700000000: 1}
         assert placed == 1
@@ -1540,8 +1539,8 @@ class TestMatchMechRequestsToDays:
         # Two mech requests for Q1, one before each day
         lookup = {"Q1": [day1 - 100, day2 - 100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert fees_by_day == {day1: 1, day2: 1}
         assert placed == 2
@@ -1566,8 +1565,8 @@ class TestMatchMechRequestsToDays:
         mech_ts_3 = day1 + SECONDS_PER_DAY + 100  # next day
         lookup = {"Q1": [mech_ts_1, mech_ts_2, mech_ts_3]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 2
@@ -1586,8 +1585,8 @@ class TestMatchMechRequestsToDays:
         ]
         lookup = {"Q1": [day1 - 100, day1 + 100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 2
@@ -1607,8 +1606,8 @@ class TestMatchMechRequestsToDays:
         ]
         lookup = {"Q1": [day1 - 100]}  # different title
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 1  # Q1 request is unplaced
@@ -1618,7 +1617,9 @@ class TestMatchMechRequestsToDays:
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days([], {})
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                [], {}, {}
+            )
         assert fees_by_day == {}
         assert placed == 0
         assert unplaced == 0
@@ -1636,8 +1637,8 @@ class TestMatchMechRequestsToDays:
         ]
         lookup = {"PM Market": [day1 - 50]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 0
@@ -1671,8 +1672,8 @@ class TestMatchMechRequestsToDays:
         # only reachable by matching against bet_ts; day_ts alone would miss it
         lookup = {"PM Market": [bet_ts - 10]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 1
         assert unplaced == 0
@@ -1691,8 +1692,8 @@ class TestMatchMechRequestsToDays:
         ]
         lookup = {"Q1": [100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
-                stats, lookup
+            fees_by_day, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
             )
         assert placed == 0
         assert unplaced == 1
@@ -1725,7 +1726,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 1
         assert unplaced == 2
         # Correct: mech_day1 consumed → unplaced on day0 and day2
@@ -1750,7 +1753,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         # bet_ts=0 skipped, Q1 mech request is unplaced
         assert placed == 0
         assert unplaced == 1
@@ -1773,7 +1778,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 0
         assert unplaced == 2
 
@@ -1791,7 +1798,9 @@ class TestMatchMechRequestsToDays:
             }
         ]
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+            fees, placed, unplaced, _ = b._match_mech_requests_to_days(
+                stats, lookup, {}
+            )
         assert placed == 1
         assert unplaced == 0
 
@@ -1802,28 +1811,26 @@ class TestMatchMechRequestsToDays:
 
 
 class TestApplyMechFees:
-    """Tests for _apply_mech_fees (simplified: looks up pre-computed fees_by_day)."""
+    """Tests for _apply_mech_fees: looks up a day's pre-computed count and cost."""
 
     def test_day_in_fees(self) -> None:
-        """Returns correct fees when day is in fees_by_day."""
+        """Returns the day's count and its pre-computed cost."""
         b = _make_fetch_behaviour()
-        fees_by_day = {100: 3}
-        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        fees, count = b._apply_mech_fees({100: 3}, 100, {100: Decimal(CHARGE_A)})
         assert count == 3
-        assert fees == 3 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+        assert fees == float(Decimal(CHARGE_A))
 
     def test_day_not_in_fees(self) -> None:
-        """Returns zero when day is not in fees_by_day."""
+        """Returns zero when the day has no requests."""
         b = _make_fetch_behaviour()
-        fees_by_day = {200: 5}
-        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        fees, count = b._apply_mech_fees({200: 5}, 100, {200: Decimal("0.05")})
         assert count == 0
         assert fees == 0.0
 
-    def test_empty_fees_by_day(self) -> None:
-        """Returns zero for empty fees_by_day."""
+    def test_no_requests_on_any_day(self) -> None:
+        """Returns zero when no day has requests."""
         b = _make_fetch_behaviour()
-        fees, count = b._apply_mech_fees({}, 100)
+        fees, count = b._apply_mech_fees({}, 100, {})
         assert count == 0
         assert fees == 0.0
 
@@ -2349,6 +2356,242 @@ class TestCalculateSettledMechRequests:
 
 
 # ---------------------------------------------------------------------------
+# Mech request costs: real charges, flat fee only without one
+
+
+ANALYTICS_URL = "https://mech-analytics.test"
+
+
+def _requester_response(all_window: Dict[str, Any]) -> MagicMock:
+    """mech-analytics ``/v1/metrics/requester`` answering with ``all_window``."""
+    response = MagicMock()
+    response.status_code = 200
+    response.body = json.dumps({"windows": {"all": all_window}}).encode()
+    return response
+
+
+def _total_mech_requests_from_analytics(
+    all_window: Dict[str, Any],
+) -> Tuple[FetchPerformanceSummaryBehaviour, MagicMock, Any]:
+    """Run ``_get_total_mech_requests`` against a ``/requester`` ``all_window``."""
+    b = _make_fetch_behaviour()
+    ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
+    params.mech_analytics_url = ANALYTICS_URL
+    with (
+        _patch_context(b, ctx, synced_data)[0],
+        _patch_context(b, ctx, synced_data)[1],
+        patch.object(
+            b,
+            "get_http_response",
+            side_effect=_return_gen(_requester_response(all_window)),
+        ),
+    ):
+        count = _drive_gen(b._get_total_mech_requests("0xaddr"))
+    return b, ctx, count
+
+
+def _scored_row(title: str, charge_usd: Optional[str]) -> dict:
+    """A mech-analytics row for a request made just now on ``title``."""
+    return {
+        "request_id": f"{title}-{charge_usd}",
+        "question_title": title,
+        "requested_at": "2023-11-14T22:13:20+00:00",
+        "charge_usd": charge_usd,
+    }
+
+
+class TestMechRequestCosts:
+    """The cost side of ROI is what the requests were charged."""
+
+    def test_split_off_held_back_costs_leaves_its_input_untouched(self) -> None:
+        """Held-back costs come out of a copy; the caller's costs are unchanged."""
+        costs = {("Open", 1): [Decimal(CHARGE_A)], ("Other", 2): [Decimal("0.02")]}
+
+        pending, remaining = (
+            FetchPerformanceSummaryBehaviour._split_off_held_back_costs(
+                [("Open", 1)], costs
+            )
+        )
+
+        assert pending == [PendingMechRequest("Open", 1, CHARGE_A)]
+        assert remaining == {("Open", 1): [], ("Other", 2): [Decimal("0.02")]}
+        assert costs == {
+            ("Open", 1): [Decimal(CHARGE_A)],
+            ("Other", 2): [Decimal("0.02")],
+        }
+
+    @pytest.mark.parametrize(
+        ("all_window", "expected_cost"),
+        [
+            ({"n_mech_requests": 4, "mech_fee_usd": 0.0731}, Decimal("0.0731")),
+            ({"n_mech_requests": 4, "mech_fee_usd": "0.0731"}, Decimal("0.0731")),
+            ({"n_mech_requests": 4, "mech_fee_usd": 0}, Decimal(0)),
+            # a deployment that predates the field: flat fee per request
+            ({"n_mech_requests": 4}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": None}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": -1}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": "abc"}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": True}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": "NaN"}, Decimal("0.04")),
+            ({"n_mech_requests": 4, "mech_fee_usd": {"usd": 1}}, Decimal("0.04")),
+            ({"n_mech_requests": 0, "mech_fee_usd": None}, Decimal(0)),
+        ],
+    )
+    def test_total_cost_is_the_reported_fee_else_flat_per_request(
+        self, all_window: Dict[str, Any], expected_cost: Decimal
+    ) -> None:
+        """The all-time fee from mech-analytics, or the flat fee per request without it."""
+        b, _, count = _total_mech_requests_from_analytics(all_window)
+        assert count == all_window["n_mech_requests"]
+        assert b._total_mech_cost_usd == expected_cost
+
+    @pytest.mark.parametrize(
+        ("all_window", "warns"),
+        [
+            ({"n_mech_requests": 4, "mech_fee_usd": "abc"}, True),
+            ({"n_mech_requests": 4, "mech_fee_usd": -1}, True),
+            ({"n_mech_requests": 4, "mech_fee_usd": None}, False),
+            ({"n_mech_requests": 4}, False),
+        ],
+    )
+    def test_unusable_reported_fee_is_logged(
+        self, all_window: Dict[str, Any], warns: bool
+    ) -> None:
+        """A fee that is present but rejected is logged; an absent one is not."""
+        _, ctx, _ = _total_mech_requests_from_analytics(all_window)
+        warnings = [str(c) for c in ctx.logger.warning.call_args_list]
+        assert any("Unusable" in w and "mech_fee_usd" in w for w in warnings) is warns
+
+    @pytest.mark.parametrize(
+        ("charge", "expected_cost", "warns"),
+        [
+            (CHARGE_A, Decimal(CHARGE_A), False),
+            (None, DEFAULT_MECH_FEE_USD, False),
+            ("abc", DEFAULT_MECH_FEE_USD, True),
+            ("-0.5", DEFAULT_MECH_FEE_USD, True),
+            (["0.01"], DEFAULT_MECH_FEE_USD, True),
+        ],
+    )
+    def test_unusable_request_charge_is_logged(
+        self, charge: Optional[str], expected_cost: Decimal, warns: bool
+    ) -> None:
+        """A request charge that is present but rejected costs the flat fee, logged."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            cost = b._mech_request_cost_usd({"requestId": "0x1", "chargeUsd": charge})
+        assert cost == expected_cost
+        warnings = [str(c) for c in ctx.logger.warning.call_args_list]
+        assert any("chargeUsd" in w and "'0x1'" in w for w in warnings) is warns
+
+    def test_subgraph_total_costs_the_flat_fee_per_request(self) -> None:
+        """Without mech-analytics only on-chain requests are seen, each at the flat fee."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_mech_sender",
+                side_effect=_return_gen({"totalMarketplaceRequests": "7"}),
+            ),
+        ):
+            _drive_gen(b._get_total_mech_requests("0xaddr"))
+        assert b._total_mech_cost_usd == Decimal("0.07")
+
+    def test_open_cost_sums_charges_of_open_market_requests_only(self) -> None:
+        """Open requests cost their charge, the flat fee without one; closed are excluded."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context(is_polymarket=True)
+        params.mech_analytics_url = ANALYTICS_URL
+        rows = [
+            _scored_row("Open", CHARGE_A),
+            _scored_row("Open", None),
+            _scored_row("Closed", "0.5"),
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_page_mech_analytics_scored_rows", side_effect=_return_gen(rows)
+            ),
+            patch.object(
+                b,
+                "_fetch_polymarket_open_position_titles",
+                side_effect=_return_gen({"Open"}),
+            ),
+        ):
+            count = _drive_gen(b._get_open_market_requests("0xaddr"))
+        assert count == 2
+        assert b._open_market_cost_usd == Decimal(CHARGE_A) + DEFAULT_MECH_FEE_USD
+
+    @pytest.mark.parametrize(
+        ("total_cost", "open_cost", "settled_cost", "warns"),
+        [
+            (Decimal("0.10"), Decimal("0.03"), Decimal("0.07"), False),
+            (Decimal("0.10"), Decimal(0), Decimal("0.10"), False),
+            (Decimal("0.05"), Decimal("0.05"), Decimal(0), False),
+            # the two sources are not reconciled: never a negative cost, logged
+            (Decimal("0.02"), Decimal("0.05"), Decimal(0), True),
+        ],
+    )
+    def test_settled_cost_is_total_minus_open(
+        self,
+        total_cost: Decimal,
+        open_cost: Decimal,
+        settled_cost: Decimal,
+        warns: bool,
+    ) -> None:
+        """Settled requests cost what all requests cost less the open ones."""
+        b = _make_fetch_behaviour(
+            _total_mech_requests=5,
+            _total_mech_cost_usd=total_cost,
+            _open_market_requests=2,
+            _open_market_cost_usd=open_cost,
+        )
+        ctx, _, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            settled = _drive_gen(b._calculate_settled_mech_requests("0xaddr"))
+        assert settled == 3
+        assert b._settled_mech_cost_usd == settled_cost
+        assert ctx.logger.warning.called is warns
+
+    def test_no_requests_cost_nothing(self) -> None:
+        """An agent with no requests has a zero settled cost, not an unknown one."""
+        b = _make_fetch_behaviour(_total_mech_requests=0)
+        assert _drive_gen(b._calculate_settled_mech_requests("0xaddr")) == 0
+        assert b._settled_mech_cost_usd == Decimal(0)
+
+    def test_matched_requests_carry_their_charge_to_the_bet_day(self) -> None:
+        """Placed and unplaced requests add their own charge to their day."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        bet_day = _DAY0 + SECONDS_PER_DAY
+        stats = [_stat(bet_day, [("A", bet_day + 50)], False)]
+        lookup = {"A": [bet_day + 10, _DAY0 + 20]}
+        costs = {("A", bet_day + 10): [Decimal(CHARGE_A)]}
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            counts, placed, unplaced, by_day = b._match_mech_requests_to_days(
+                stats, {k: sorted(v) for k, v in lookup.items()}, costs
+            )
+        assert (placed, unplaced) == (1, 1)
+        assert counts == {bet_day: 1, _DAY0: 1}
+        assert by_day == {bet_day: Decimal(CHARGE_A), _DAY0: DEFAULT_MECH_FEE_USD}
+        # the caller's costs are left untouched for the next use
+        assert costs == {("A", bet_day + 10): [Decimal(CHARGE_A)]}
+
+
+# ---------------------------------------------------------------------------
 # Tests for calculate_roi - generator method
 
 
@@ -2466,7 +2709,6 @@ class TestCalculateRoi:
                 "_fetch_olas_in_usd_price",
                 side_effect=_return_gen(1000000000000000000),
             ),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
@@ -2493,7 +2735,6 @@ class TestCalculateRoi:
             patch.object(
                 b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
             ),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
@@ -2522,59 +2763,53 @@ class TestCalculateRoi:
             patch.object(
                 b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
             ),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
         assert partial_roi is not None
 
-    def test_roi_reduces_with_offchain_prepaid(self) -> None:
-        """Off-chain pre-deposit contributes to the cost side and lowers ROI.
-
-        Trader books ``BalanceTracker.Deposit`` sums as spent under the
-        pre-deposit-as-loss rule. Two runs with identical trade / mech /
-        rewards data but different pre-deposit sums must produce the
-        second (higher pre-deposit) as strictly lower ROI.
-        """
+    @pytest.mark.parametrize(
+        ("settled_cost_usd", "mech_cost_usd"),
+        [
+            # charges the mechs reported for the settled requests
+            (Decimal("0.05"), 0.05),
+            # free requests still count as zero cost, not the flat fee
+            (Decimal(0), 0.0),
+            # no cost computed alongside the count: the flat fee per request
+            (None, 2 * FLAT_FEE_USD_FLOAT),
+        ],
+    )
+    def test_roi_cost_side_is_the_settled_mech_charge(
+        self, settled_cost_usd: Optional[Decimal], mech_cost_usd: float
+    ) -> None:
+        """Mech costs enter ROI as the settled requests' charges."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=2, _settled_mech_cost_usd=settled_cost_usd
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         agent = {
             "serviceId": "1",
             "totalTraded": str(WEI_IN_ETH),
-            "totalExpectedPayout": str(int(2 * WEI_IN_ETH)),
+            "totalExpectedPayout": str(2 * WEI_IN_ETH),
             "totalTradedSettled": str(WEI_IN_ETH),
             "totalFeesSettled": "0",
         }
-        staking = {"olasRewardsEarned": "0"}
-        olas_price = int(1 * WEI_IN_ETH)
-
-        def _run(prepaid_wei: int) -> Any:
-            b = _make_fetch_behaviour(_settled_mech_requests_count=1)
-            ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-            with (
-                _patch_context(b, ctx, synced_data)[0],
-                _patch_context(b, ctx, synced_data)[1],
-                patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
-                patch.object(
-                    b, "_fetch_staking_service", side_effect=_return_gen(staking)
-                ),
-                patch.object(
-                    b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
-                ),
-                patch.object(
-                    b,
-                    "_fetch_offchain_prepaid_wei",
-                    side_effect=_return_gen(prepaid_wei),
-                ),
-            ):
-                return self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
-
-        final_low, partial_low = _run(0)
-        final_high, partial_high = _run(int(0.25 * WEI_IN_ETH))
-
-        assert final_low is not None and final_high is not None
-        assert partial_low is not None and partial_high is not None
-        # Higher pre-deposit → higher total_costs → lower payout/costs ratio
-        assert final_high < final_low
-        assert partial_high < partial_low
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
+            patch.object(
+                b,
+                "_fetch_staking_service",
+                side_effect=_return_gen({"olasRewardsEarned": "0"}),
+            ),
+            patch.object(
+                b, "_fetch_olas_in_usd_price", side_effect=_return_gen(WEI_IN_ETH)
+            ),
+        ):
+            _, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
+        total_costs = 1.0 + mech_cost_usd
+        assert partial_roi == pytest.approx((2.0 - total_costs) * 100 / total_costs)
 
 
 # ---------------------------------------------------------------------------
@@ -2658,7 +2893,6 @@ class TestSettledCountUnknownPropagation:
             patch.object(
                 b, "_fetch_olas_in_usd_price", side_effect=_return_gen(WEI_IN_ETH)
             ),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
@@ -2692,18 +2926,6 @@ class TestSettledCountUnknownPropagation:
         assert result is None
 
 
-# ---------------------------------------------------------------------------
-# Tests for _fetch_offchain_prepaid_wei — helper's own branches
-# ---------------------------------------------------------------------------
-
-
-def _make_marketplace_config(*, use_offchain: bool) -> MagicMock:
-    """Build a mech_marketplace_config stub for the helper."""
-    cfg = MagicMock()
-    cfg.use_offchain = use_offchain
-    return cfg
-
-
 def _drive_gen(gen: Any) -> Any:
     """Drive a generator to completion and return its value."""
     try:
@@ -2711,671 +2933,6 @@ def _drive_gen(gen: Any) -> Any:
     except StopIteration as e:
         return e.value
     raise AssertionError("Generator did not stop")  # pragma: no cover
-
-
-def _state_response(
-    body: Any, performative: Any = ContractApiMessage.Performative.STATE
-) -> MagicMock:
-    """Build a STATE-performative response with the given body.
-
-    Defaults to the contract-API performative for the incremental-scan
-    callers; pass ``LedgerApiMessage.Performative.STATE`` for the
-    head-block ledger read.
-
-    :param body: value to place on ``response.state.body`` (usually a
-        dict, sometimes an empty ``{}`` for malformed-response tests).
-    :param performative: response performative; defaults to the
-        contract-API STATE, override to the ledger-API STATE for head
-        block reads.
-    :return: fully-wired ``MagicMock`` response ready to feed into
-        ``get_contract_api_response`` / ``get_ledger_api_response``
-        side_effects.
-    """
-    response = MagicMock()
-    response.performative = performative
-    response.state.body = body
-    return response
-
-
-def _error_response() -> MagicMock:
-    """Build a non-STATE contract-API response (framework wrapping an error)."""
-    response = MagicMock()
-    response.performative = ContractApiMessage.Performative.ERROR
-    return response
-
-
-def _ledger_head_gen(head_block: int) -> Any:
-    """Build a ``get_ledger_api_response`` side_effect that returns ``head_block``.
-
-    Wraps ``_state_response`` (with the ledger-API performative) so
-    tests only care about the head value.
-
-    :param head_block: block number the fake ``get_block_number`` ledger
-        call resolves to.
-    :return: side_effect callable that yields a generator producing a
-        STATE-performative response with ``get_block_number_result`` set.
-    """
-
-    def _side_effect(*_a: Any, **_kw: Any) -> Generator:
-        return _return_gen(
-            _state_response(
-                {"get_block_number_result": head_block},
-                performative=LedgerApiMessage.Performative.STATE,
-            )
-        )()
-
-    return _side_effect
-
-
-class TestFetchOffchainPrepaidWei:
-    """Direct tests for the ``_fetch_offchain_prepaid_wei`` helper's branches."""
-
-    def _make_shared_state(
-        self, initial_state: Optional[OffchainDepositState]
-    ) -> Tuple[MagicMock, list]:
-        """Build a shared_state stub that records offchain-deposit writes.
-
-        The helper reads via ``read_offchain_deposits_from_disk`` (raw
-        JSON, sibling-agnostic) and writes via
-        ``write_offchain_deposits_to_disk`` (split write, no whole-summary
-        touch). The mock mirrors that shape so we exercise the actual
-        code path, not the deprecated
-        ``read_existing_performance_summary`` /
-        ``overwrite_performance_summary`` pair.
-
-        :param initial_state: value the mocked
-            ``read_offchain_deposits_from_disk`` returns.
-        :return: tuple of ``(shared_state MagicMock, writes list)``
-            where the writes list records the ``OffchainDepositState``
-            argument to every ``write_offchain_deposits_to_disk`` call.
-        """
-        writes: list = []
-        shared_state = MagicMock()
-        shared_state.read_offchain_deposits_from_disk.return_value = initial_state
-
-        def _record_write(state_arg: OffchainDepositState) -> None:
-            writes.append(state_arg)
-
-        shared_state.write_offchain_deposits_to_disk.side_effect = _record_write
-        # Fail loudly if the helper regresses to full-summary I/O — it
-        # must NOT touch the whole-file read/write paths mid-cycle.
-        shared_state.read_existing_performance_summary.side_effect = AssertionError(
-            "_fetch_offchain_prepaid_wei must not read the whole summary; "
-            "use read_offchain_deposits_from_disk"
-        )
-        shared_state.overwrite_performance_summary.side_effect = AssertionError(
-            "_fetch_offchain_prepaid_wei must not overwrite the whole summary; "
-            "use write_offchain_deposits_to_disk"
-        )
-        shared_state.synced_timestamp = 1_700_000_000
-        return shared_state, writes
-
-    def test_use_offchain_false_returns_cached_total_no_rpc(self) -> None:
-        """``use_offchain=False`` returns cached_total (0 when never enabled) without any RPC."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
-        params.use_offchain = False
-        shared_state, writes = self._make_shared_state(None)
-
-        api_calls: list = []
-        ledger_calls: list = []
-
-        def _fail_api(*_a: Any, **_kw: Any) -> Generator:
-            api_calls.append(_kw)
-            return _noop_gen()
-
-        def _fail_ledger(*_a: Any, **_kw: Any) -> Generator:
-            ledger_calls.append(_kw)
-            return _noop_gen()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_fail_api),
-            patch.object(b, "get_ledger_api_response", side_effect=_fail_ledger),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 0, "no prior deposits => cached_total=0"
-        assert (
-            api_calls == [] and ledger_calls == []
-        ), "off-chain disabled must not hit any RPC"
-        assert writes == [], "off-chain disabled must not persist state"
-
-    def test_use_offchain_false_preserves_accrued_cached_total(self) -> None:
-        """Under pre-deposit-as-loss, flipping ``use_offchain`` off must NOT drop accrued cost."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
-        params.use_offchain = False
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=5000, last_scanned_block=142)
-        )
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        # Once counted, always counted — even after a config rollback.
-        assert result == 5000
-        assert writes == []
-
-    def test_zero_address_returns_cached_total_and_warns(self) -> None:
-        """A zero-address ``balance_tracker_address`` with use_offchain=True is a misconfig — warn AND preserve cached."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        params.balance_tracker_address = "0x0000000000000000000000000000000000000000"
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=800, last_scanned_block=42)
-        )
-
-        warnings: list = []
-        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 800, "cached_total preserved through misconfig bail"
-        assert writes == []
-        assert any("misconfigured" in w for w in warnings), (
-            "misconfig branch must emit a loud warning — otherwise ROI cost "
-            "silently freezes and the operator can't tell it's broken"
-        )
-
-    def test_first_run_seeds_current_block_and_returns_zero(self) -> None:
-        """First run seeds ``last_scanned_block`` from head; total stays 0."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(None)
-
-        contract_calls_seen: list = []
-
-        def _fail_contract_api(*_a: Any, **kw: Any) -> Generator:
-            contract_calls_seen.append(kw)
-            return _noop_gen()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(12345)
-            ),
-            patch.object(
-                b, "get_contract_api_response", side_effect=_fail_contract_api
-            ),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 0
-        assert (
-            contract_calls_seen == []
-        ), "first run must not hit the contract API before checkpoint is set"
-        assert len(writes) == 1
-        assert writes[0].total_deposited_wei == 0
-        assert writes[0].last_scanned_block == 12345
-
-    def test_seed_accepts_genesis_block_zero(self) -> None:
-        """Head block 0 is a legitimate value on fresh devnet/Hardhat and must NOT be rejected."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(None)
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(b, "get_ledger_api_response", side_effect=_ledger_head_gen(0)),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 0
-        assert len(writes) == 1
-        assert (
-            writes[0].last_scanned_block == 0
-        ), "block 0 must seed the checkpoint at 0, not loop the seed path forever"
-
-    def test_first_run_malformed_seed_response_leaves_checkpoint_unset(self) -> None:
-        """A STATE response missing ``get_block_number_result`` must NOT seed a zero checkpoint."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(None)
-
-        def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
-            # STATE-performative but body has no ``get_block_number_result`` key.
-            return _return_gen(
-                _state_response({}, performative=LedgerApiMessage.Performative.STATE)
-            )()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 0
-        assert writes == [], (
-            "malformed seed response must not persist a zero checkpoint "
-            "(would loop the seed path every cycle)"
-        )
-
-    def test_head_block_non_numeric_string_degrades_with_warning(self) -> None:
-        """A non-numeric ``get_block_number_result`` must degrade with a warning, not raise.
-
-        Consistency regression: every other malformed-input branch in
-        ``_fetch_offchain_prepaid_wei`` degrades to ``cached_total`` with
-        a warning. The ``int(raw_head)`` coerce inside a try/except
-        matches that pattern instead of propagating ``ValueError`` and
-        crashing the behaviour if a future ledger response ever ships a
-        non-numeric string here (mirrors mech_interact_abci's
-        ``_get_native_balance``).
-        """
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        warnings: list = []
-        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
-
-        def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
-            return _return_gen(
-                _state_response(
-                    {"get_block_number_result": "not-a-number"},
-                    performative=LedgerApiMessage.Performative.STATE,
-                )
-            )()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000, "cached_total preserved on ledger malformed value"
-        assert writes == []
-        assert any(
-            "invalid value" in w for w in warnings
-        ), "must log a warning identifying the invalid head-block value"
-
-    def test_incremental_scan_accumulates_and_advances_checkpoint_to_head(self) -> None:
-        """Later runs sum new_wei from entries and move the checkpoint to the scanned head, not to the max event block."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        seen: dict = {}
-
-        def _api(*_a: Any, **kw: Any) -> Generator:
-            seen["callable"] = kw["contract_callable"]
-            seen["from_block"] = kw["from_block"]
-            seen["to_block"] = kw["to_block"]
-            entries = [
-                {"amount": 150, "block_number": 110},
-                {"amount": 250, "block_number": 120},
-            ]
-            return _return_gen(_state_response({"entries": entries}))()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(130)
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        # cached (1000) + sum(150 + 250) = 1400
-        assert result == 1400
-        assert seen["callable"] == "get_deposit_events_for_requester"
-        assert seen["from_block"] == 100, "must scan strictly forward (checkpoint+1)"
-        assert (
-            seen["to_block"] == 130
-        ), "must pass the resolved head as concrete to_block, not 'latest'"
-        assert len(writes) == 1
-        assert writes[0].total_deposited_wei == 1400
-        assert writes[0].last_scanned_block == 130, (
-            "checkpoint advances to the scanned head (130), not to the max "
-            "event block (120), so future deposits between 121 and 130 are "
-            "not re-scanned"
-        )
-
-    def test_incremental_empty_entries_advances_checkpoint_to_head(self) -> None:
-        """Empty entries — no cost change, but the checkpoint MUST still advance to the scanned head.
-
-        Otherwise a long deposit-quiet stretch grows the scan range every
-        cycle until the provider's eth_getLogs cap rejects it and future
-        deposits are silently missed forever.
-        """
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        def _api(*_a: Any, **_kw: Any) -> Generator:
-            return _return_gen(_state_response({"entries": []}))()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(500)
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000, "cost side unchanged with no deposits"
-        assert len(writes) == 1
-        assert writes[0].total_deposited_wei == 1000
-        assert (
-            writes[0].last_scanned_block == 500
-        ), "checkpoint must advance to head to prevent unbounded range growth"
-
-    def test_scan_range_capped_at_offchain_max_scan_range(self) -> None:
-        """After a long offline stretch the scan must chunk, not blow past the provider cap.
-
-        Regression: without the ``min(head, from_block + MAX - 1)`` cap
-        an agent offline over a weekend (~14h+ of Gnosis blocks) would
-        scan ``[checkpoint+1, head]`` which exceeds public providers'
-        ``eth_getLogs`` block-range cap (Alchemy / Infura ~10k). The
-        provider rejects, the response arrives as ERROR performative,
-        the helper returns cached_total, no checkpoint advance — same
-        rejection next cycle, forever. With the cap the checkpoint
-        marches forward by ``OFFCHAIN_MAX_SCAN_RANGE`` blocks per
-        cycle until it catches up to head.
-        """
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        seen: dict = {}
-
-        def _api(*_a: Any, **kw: Any) -> Generator:
-            seen["from_block"] = kw["from_block"]
-            seen["to_block"] = kw["to_block"]
-            return _return_gen(_state_response({"entries": []}))()
-
-        # Head far ahead — >> MAX_SCAN_RANGE — simulating a very long
-        # offline stretch. Only the cap protects the scan.
-        head_block = 100 + OFFCHAIN_MAX_SCAN_RANGE * 20  # 20 chunks worth
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b,
-                "get_ledger_api_response",
-                side_effect=_ledger_head_gen(head_block),
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert seen["from_block"] == 100
-        # ``to_block`` clamped to ``from_block + MAX_SCAN_RANGE - 1``, so
-        # this cycle only asks the provider for a bounded range no
-        # matter how far behind we are.
-        expected_to_block = 100 + OFFCHAIN_MAX_SCAN_RANGE - 1
-        assert seen["to_block"] == expected_to_block
-        assert (
-            seen["to_block"] < head_block
-        ), "cap must have kicked in for this test to be meaningful"
-        assert len(writes) == 1
-        # Checkpoint advances only to the scanned upper bound, so the
-        # next cycle picks up at ``expected_to_block + 1``.
-        assert writes[0].last_scanned_block == expected_to_block
-
-    def test_malformed_entry_shape_returns_cached_total_no_raise(self) -> None:
-        """A shape drift on entry dicts must NOT raise — degrades like every other malformed branch.
-
-        Regression: the previous ``sum(int(entry["amount"]) for entry
-        in entries)`` would raise ``KeyError`` on a missing ``amount``
-        key and propagate out through ``calculate_roi`` → framework;
-        with ``skill_exception_policy: stop_and_exit`` in
-        ``aea-config.yaml`` that terminates the whole agent. The
-        ``ContractApiMessage.Performative`` gate above does NOT wrap
-        the sum in a ``try/except``. Wrapping the coerce in
-        ``(KeyError, TypeError, ValueError)`` routes into the
-        malformed-response branch instead (return cached_total, no
-        checkpoint advance) so the agent survives a wire-format
-        change.
-        """
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        def _api(*_a: Any, **_kw: Any) -> Generator:
-            # STATE-performative and ``entries`` present, but the entry
-            # dict itself lacks the ``amount`` field.
-            entries = [{"block_number": 110}]  # missing ``amount``
-            return _return_gen(_state_response({"entries": entries}))()
-
-        warnings: list = []
-        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000, "cached_total preserved on entry shape drift"
-        assert writes == [], "checkpoint stays put on a shape drift"
-        assert any(
-            "unexpected" in w for w in warnings
-        ), "must log a warning identifying the shape drift"
-
-    def test_incremental_from_block_beyond_head_returns_cached_no_scan(self) -> None:
-        """If from_block > head_block (chain hasn't moved), no contract scan and no persist."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=500)
-        )
-
-        contract_calls: list = []
-
-        def _fail_contract_api(*_a: Any, **kw: Any) -> Generator:
-            contract_calls.append(kw)
-            return _noop_gen()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(500)
-            ),
-            patch.object(
-                b, "get_contract_api_response", side_effect=_fail_contract_api
-            ),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000
-        assert (
-            contract_calls == []
-        ), "no chain progress since checkpoint => nothing to scan"
-        assert writes == []
-
-    def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:
-        """Missing ``entries`` key must leave cached total AND checkpoint intact."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        def _api(*_a: Any, **_kw: Any) -> Generator:
-            # STATE-performative but body has no ``entries`` key.
-            return _return_gen(_state_response({}))()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000, "malformed response must return cached total unchanged"
-        assert writes == [], (
-            "malformed incremental response must not advance the checkpoint "
-            "(would silently skip deposits in the scanned range)"
-        )
-
-    def test_incremental_error_performative_returns_cached(self) -> None:
-        """A non-STATE performative on incremental scan returns cached, no persist."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.use_offchain = True
-        shared_state, writes = self._make_shared_state(
-            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
-        )
-
-        def _api(*_a: Any, **_kw: Any) -> Generator:
-            return _return_gen(_error_response())()
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                type(b),
-                "shared_state",
-                new_callable=PropertyMock,
-                return_value=shared_state,
-            ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
-            ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
-        ):
-            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
-
-        assert result == 1000
-        assert writes == []
 
 
 # ---------------------------------------------------------------------------
@@ -4050,6 +3607,35 @@ class TestCalculatePerformanceMetrics:
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert isinstance(result, PerformanceMetricsData)
         assert result.roi == 0.5  # 50.0 / 100
+
+    def test_profit_and_funds_used_use_the_requests_charges(self) -> None:
+        """All-time profit and funds used subtract charges, not the flat fee per request."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=3,
+            _settled_mech_cost_usd=Decimal("0.07"),
+            _open_market_requests=1,
+            _total_mech_requests=4,
+            _total_mech_cost_usd=Decimal("0.09"),
+            _partial_roi=None,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        trader_agent = {
+            "totalTraded": str(10 * USDC_DECIMALS_DIVISOR),
+            "totalFees": "0",
+            "totalTradedSettled": str(10 * USDC_DECIMALS_DIVISOR),
+            "totalFeesSettled": "0",
+            "totalExpectedPayout": str(20 * USDC_DECIMALS_DIVISOR),
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_available_funds", side_effect=_return_gen(0.0)),
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        # rounded to cents: 10 traded + 0.09 charged; 20 - 10 - 0.07 settled
+        # (the flat fee would give 10.04 and 9.97)
+        assert result.all_time_funds_used == pytest.approx(10.09)
+        assert result.all_time_profit == pytest.approx(9.93)
 
     def test_none_partial_roi(self) -> None:
         """Handles None partial_roi."""
@@ -5411,7 +4997,6 @@ class TestSaveAgentPerformanceSummary:
         self,
         new_summary: AgentPerformanceSummary,
         existing: AgentPerformanceSummary,
-        disk_offchain: Optional[OffchainDepositState] = _UNSET,  # type: ignore[assignment]
     ) -> None:
         """Helper: run _save_agent_performance_summary with mocked state.
 
@@ -5420,20 +5005,10 @@ class TestSaveAgentPerformanceSummary:
         :param existing: what the mocked ``read_existing_performance_summary``
             returns (drives the preserve logic for
             ``agent_behavior`` / ``metrics`` / etc.).
-        :param disk_offchain: what the mocked
-            ``read_offchain_deposits_from_disk`` (the lenient raw-JSON
-            re-read the save now uses to survive sibling-corruption
-            cascades) returns. Defaults to ``existing.offchain_deposits``
-            so tests that don't care about that path see the happy
-            behaviour; pass explicitly (including ``None``) to exercise
-            the corruption-cascade and first-boot branches.
         """
         b = _make_fetch_behaviour()
         ctx, _, synced_data, state = _mock_context()
         state.read_existing_performance_summary.return_value = existing
-        if disk_offchain is _UNSET:
-            disk_offchain = existing.offchain_deposits
-        state.read_offchain_deposits_from_disk.return_value = disk_offchain
         state.read_achievements_from_disk.return_value = existing.achievements
         with _patch_context(b, ctx, synced_data)[0]:
             b._save_agent_performance_summary(new_summary)
@@ -5545,90 +5120,6 @@ class TestSaveAgentPerformanceSummary:
         ]
         self._save(new_summary, existing)
         assert new_summary.timestamp == 1700000000
-
-    def test_preserves_offchain_deposits_from_existing(self) -> None:
-        """The persisted ``offchain_deposits`` state must survive the cycle-end save.
-
-        Regression test for the persistence gap where
-        ``_fetch_offchain_prepaid_wei`` writes offchain_deposits earlier in
-        the cycle but ``_fetch_agent_performance_summary`` rebuilds a
-        fresh summary with the field unset. Without carry-forward here
-        every cycle re-enters the first-run seed path and the ROI cost
-        term stays permanently 0.
-        """
-        existing = _default_summary()
-        existing.offchain_deposits = OffchainDepositState(
-            total_deposited_wei=12345,
-            last_scanned_block=987,
-        )
-        new_summary = _default_summary()
-        assert new_summary.offchain_deposits is None
-        self._save(new_summary, existing)
-        assert new_summary.offchain_deposits is not None
-        assert new_summary.offchain_deposits.total_deposited_wei == 12345
-        assert new_summary.offchain_deposits.last_scanned_block == 987
-
-    def test_offchain_deposits_survives_sibling_corruption_via_raw_reread(
-        self,
-    ) -> None:
-        """Sibling-corruption regression using the raw-JSON re-read path.
-
-        Real-flow reproduction of the corruption cascade Ojus flagged.
-        ``_fetch_offchain_prepaid_wei`` writes the checkpoint to disk
-        earlier in the cycle. ``_fetch_agent_performance_summary`` then
-        builds ``new_summary`` with ``offchain_deposits=None`` (never
-        carrying the helper's value in memory).
-        ``_save_agent_performance_summary`` runs and calls
-        ``read_existing_performance_summary`` which returns a
-        validation-degraded fresh summary (because some *other* nested
-        field on disk, e.g. Achievements, failed ``__post_init__``). The
-        old ``if existing_data.offchain_deposits is not None`` guard would
-        have skipped the preserve, leaving ``new_summary.offchain_deposits``
-        at its construction-time ``None``, and the atomic overwrite would
-        have persisted ``None`` to disk — wiping the just-persisted
-        checkpoint.
-
-        Fix: ``_save_agent_performance_summary`` now calls
-        ``read_offchain_deposits_from_disk`` which parses only the
-        ``offchain_deposits`` sub-dict without ``__post_init__``-ing the
-        rest, so it recovers the real checkpoint even when siblings are
-        corrupt.
-        """
-        existing = _default_summary()  # simulates the degraded fresh summary
-        assert existing.offchain_deposits is None
-        # The lenient raw-JSON re-read still succeeds — this is the case
-        # the fix targets: file exists, offchain_deposits sub-dict is
-        # valid, but another field's __post_init__ blew up on the
-        # normal read.
-        disk_offchain = OffchainDepositState(
-            total_deposited_wei=12345, last_scanned_block=987
-        )
-        # ``_fetch_agent_performance_summary`` builds this without
-        # setting offchain_deposits — this is what the real flow does.
-        new_summary = _default_summary()
-        assert new_summary.offchain_deposits is None
-        self._save(new_summary, existing, disk_offchain=disk_offchain)
-        assert new_summary.offchain_deposits is not None
-        assert new_summary.offchain_deposits.total_deposited_wei == 12345
-        assert new_summary.offchain_deposits.last_scanned_block == 987
-
-    def test_offchain_deposits_stays_none_when_disk_also_missing_field(
-        self,
-    ) -> None:
-        """No cross-field cascade in the *reverse* direction either.
-
-        When the raw-JSON re-read finds no ``offchain_deposits`` sub-dict
-        (first-ever run, or file legitimately doesn't have the field),
-        the save must not fabricate one out of a MagicMock or leave it
-        set to a bogus value. It should stay ``None`` on the outgoing
-        summary.
-        """
-        existing = _default_summary()
-        assert existing.offchain_deposits is None
-        new_summary = _default_summary()
-        assert new_summary.offchain_deposits is None
-        self._save(new_summary, existing, disk_offchain=None)
-        assert new_summary.offchain_deposits is None
 
 
 # ---------------------------------------------------------------------------
@@ -6180,9 +5671,9 @@ class TestLowercaseKeyedSubgraphEndToEnd:
     def test_calculate_roi_populates(self) -> None:
         """Total ROI comes out numeric once the query id is lowercased.
 
-        Only ``_fetch_trader_agent`` runs for real; the staking, price and
-        pre-deposit lookups are neighbours of the path under test, not part
-        of it, so they stay patched.
+        Only ``_fetch_trader_agent`` runs for real; the staking and price
+        lookups are neighbours of the path under test, not part of it, so
+        they stay patched.
         """
         b, ctx, synced_data = self._polymarket_behaviour()
         subgraph, http_response = _lowercase_keyed_subgraph(
@@ -6207,7 +5698,6 @@ class TestLowercaseKeyedSubgraphEndToEnd:
                 side_effect=_return_gen({"olasRewardsEarned": "0"}),
             ),
             patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(0)),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = _exhaust_gen(b.calculate_roi())
 
@@ -6276,7 +5766,6 @@ class TestLowercaseKeyedSubgraphEndToEnd:
                 side_effect=_return_gen({"olasRewardsEarned": "0"}),
             ),
             patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(0)),
-            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
             patch.object(
                 b,
                 "_fetch_agent_details_data",
@@ -7610,8 +7099,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=stored_mech_count,
-                    daily_profit_raw=1.0
-                    + stored_mech_count * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                    daily_profit_raw=1.0 + stored_mech_count * FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=stored_mech_count,
@@ -7894,7 +7382,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=1,
-                    daily_profit_raw=1.0 + (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                    daily_profit_raw=1.0 + FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=1,
@@ -8146,11 +7634,11 @@ class TestIncrementalAttributionInvariants:
         # New daily_profit = raw - merged_fees = 1.03 - 4 * 0.01 = 0.99.
         assert older_row.daily_mech_requests == stored_count + 1
         assert older_row.daily_profit_raw == round(
-            stored_net + stored_count * (DEFAULT_MECH_FEE / WEI_IN_ETH), 3
+            stored_net + stored_count * FLAT_FEE_USD_FLOAT, 3
         )
         assert older_row.daily_profit == round(
             (older_row.daily_profit_raw or 0.0)
-            - older_row.daily_mech_requests * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+            - older_row.daily_mech_requests * FLAT_FEE_USD_FLOAT,
             3,
         )
 
@@ -8179,7 +7667,7 @@ class TestIncrementalAttributionInvariants:
                     daily_profit=1.0,
                     cumulative_profit=1.0,
                     daily_mech_requests=2,
-                    daily_profit_raw=1.0 + 2 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                    daily_profit_raw=1.0 + 2 * FLAT_FEE_USD_FLOAT,
                 )
             ],
             settled_mech_requests_count=100,
@@ -8293,7 +7781,6 @@ class TestIncrementalAttributionInvariants:
 # KPI / series agreement: every settled request charged once, open ones held
 # ---------------------------------------------------------------------------
 
-_FEE = DEFAULT_MECH_FEE / WEI_IN_ETH
 _DAY0 = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
 
 
@@ -8439,7 +7926,9 @@ class TestKpiSeriesAgreement:
         assert result.placed_mech_requests_count == 1
         assert result.unplaced_mech_requests_count == 2
         assert result.settled_mech_requests_count == 3
-        assert result.data_points[-1].cumulative_profit == round(1.0 - 3 * _FEE, 3)
+        assert result.data_points[-1].cumulative_profit == round(
+            1.0 - 3 * FLAT_FEE_USD_FLOAT, 3
+        )
         assert result.last_mech_timestamp == day1 + 160
 
     @pytest.mark.parametrize("is_polymarket", [False, True])
@@ -8462,10 +7951,12 @@ class TestKpiSeriesAgreement:
         assert backfilled.settled_mech_requests_count == 2
         assert (
             backfilled.pending_mech_requests
-            == [{"title": "Open", "timestamp": _DAY0 + 150}] * 2
+            == [PendingMechRequest("Open", _DAY0 + 150, FLAT_FEE_USD_STR)] * 2
         )
         assert backfilled.last_mech_timestamp == _DAY0 + 160
-        assert backfilled.data_points[-1].cumulative_profit == round(-2 * _FEE, 3)
+        assert backfilled.data_points[-1].cumulative_profit == round(
+            -2 * FLAT_FEE_USD_FLOAT, 3
+        )
 
         # The markets close: nothing new is fetched, both requests are released.
         day1 = _DAY0 + SECONDS_PER_DAY
@@ -8473,7 +7964,9 @@ class TestKpiSeriesAgreement:
 
         assert released.settled_mech_requests_count == 4
         assert released.pending_mech_requests == []
-        assert released.data_points[-1].cumulative_profit == round(-4 * _FEE, 3)
+        assert released.data_points[-1].cumulative_profit == round(
+            -4 * FLAT_FEE_USD_FLOAT, 3
+        )
 
         # Nothing new and nothing pending: the stored series is left as is.
         again = self._tick(released, [], [], [], day1 + 200, is_polymarket)
@@ -8703,7 +8196,7 @@ class TestKpiSeriesAgreement:
 
         assert result.settled_mech_requests_count == 1
         assert result.pending_mech_requests == [
-            {"title": "Open", "timestamp": day1 + 100}
+            PendingMechRequest("Open", day1 + 100, FLAT_FEE_USD_STR)
         ]
         assert result.last_mech_timestamp == day1 + 100
 
@@ -8735,8 +8228,10 @@ class TestKpiSeriesAgreement:
         )
 
         assert [dp.timestamp for dp in result.data_points] == [_DAY0, day2]
-        assert result.data_points[-1].daily_profit == -_FEE
-        assert result.data_points[-1].cumulative_profit == round(1.0 - _FEE, 3)
+        assert result.data_points[-1].daily_profit == -FLAT_FEE_USD_FLOAT
+        assert result.data_points[-1].cumulative_profit == round(
+            1.0 - FLAT_FEE_USD_FLOAT, 3
+        )
         assert result.last_mech_timestamp == day2 + 100
 
     def test_new_pending_request_forces_a_write(self) -> None:
@@ -8754,7 +8249,7 @@ class TestKpiSeriesAgreement:
 
         assert result is not existing
         assert result.pending_mech_requests == [
-            {"title": "Open", "timestamp": _DAY0 + 300}
+            PendingMechRequest("Open", _DAY0 + 300, FLAT_FEE_USD_STR)
         ]
         assert result.settled_mech_requests_count == 0
 
@@ -8781,7 +8276,9 @@ class TestKpiSeriesAgreement:
 
             settled = generated - len(open_requests)
             assert series.settled_mech_requests_count == settled
-            assert series.data_points[-1].cumulative_profit == round(-settled * _FEE, 3)
+            assert series.data_points[-1].cumulative_profit == round(
+                -settled * FLAT_FEE_USD_FLOAT, 3
+            )
 
     def _kpi_and_series_round(
         self,
@@ -8941,9 +8438,11 @@ class TestKpiSeriesAgreement:
         assert kpi == 6
         assert series.settled_mech_requests_count == kpi
         assert series.pending_mech_requests == [
-            {"title": "New open", "timestamp": day1 + 100}
+            PendingMechRequest("New open", day1 + 100, FLAT_FEE_USD_STR)
         ]
-        assert series.data_points[-1].cumulative_profit == round(-kpi * _FEE, 3)
+        assert series.data_points[-1].cumulative_profit == round(
+            -kpi * FLAT_FEE_USD_FLOAT, 3
+        )
 
     def test_late_scored_request_is_charged_once(self) -> None:
         """A request mech-analytics serves after the watermark passed it is charged once."""
@@ -9037,7 +8536,9 @@ class TestKpiSeriesAgreement:
 
         assert result.data_points[1].daily_profit == 4 * 10**14 / WEI_IN_ETH
         assert result.data_points[1].daily_profit_raw == 4 * 10**14 / WEI_IN_ETH
-        assert result.data_points[-1].cumulative_profit == round(10 * 0.0004 - _FEE, 3)
+        assert result.data_points[-1].cumulative_profit == round(
+            10 * 0.0004 - FLAT_FEE_USD_FLOAT, 3
+        )
 
     def test_incremental_daily_profit_is_stored_unrounded(self) -> None:
         """Sub-0.001 daily profits add up across ticks and a same-day replace."""
@@ -9062,6 +8563,202 @@ class TestKpiSeriesAgreement:
         assert replaced.data_points[-1].cumulative_profit == round(
             1.0 + 9 * 0.0004 + 0.0006, 3
         )
+
+    def test_backfill_charges_each_request_its_reported_charge(self) -> None:
+        """A day's mech cost is the sum of its requests' charges, the flat fee when none."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        fetched = [
+            {**_mech_request("Traded", day1 + 100), "chargeUsd": CHARGE_A},
+            {**_mech_request("Untraded", day1 + 150), "chargeUsd": None},
+        ]
+        stats = [_stat(day1, [("Traded", day1 + 200)], False)]
+
+        series = self._backfill(stats, fetched, [], now=day1 + 500)
+
+        (point,) = series.data_points
+        assert point.daily_mech_requests == 2
+        assert point.daily_mech_cost == pytest.approx(
+            float(Decimal(CHARGE_A)) + FLAT_FEE_USD_FLOAT
+        )
+        assert point.daily_profit == pytest.approx(-point.daily_mech_cost)
+
+    def test_incremental_merge_keeps_stored_cost_and_adds_new_charges(self) -> None:
+        """A stored day's cost carries over; a legacy point costs the flat fee."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        existing.data_points[0].daily_mech_requests = 2  # legacy: no stored cost
+        fetched = [{**_mech_request("Untraded", _DAY0 + 50), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
+        assert point.daily_mech_requests == 3
+        expected_cost = 2 * FLAT_FEE_USD_FLOAT + float(Decimal(CHARGE_A))
+        assert point.daily_mech_cost == pytest.approx(expected_cost)
+        assert point.daily_profit == pytest.approx(1.0 - expected_cost)
+
+    @pytest.mark.parametrize(
+        ("stored_cost", "charged"),
+        [
+            # a held-back request is charged what it cost when fetched
+            (CHARGE_A, float(Decimal(CHARGE_A))),
+            # entries stored before costs were recorded cost the flat fee
+            (None, FLAT_FEE_USD_FLOAT),
+            # an unreadable stored cost also falls back to the flat fee
+            ("not-a-number", FLAT_FEE_USD_FLOAT),
+        ],
+    )
+    def test_released_pending_request_is_charged_its_stored_cost(
+        self, stored_cost: Optional[str], charged: float
+    ) -> None:
+        """A request held back as open is charged its stored cost once released."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        existing.pending_mech_requests = [
+            PendingMechRequest("Closed", _DAY0 + 50, stored_cost)
+        ]
+
+        result = self._tick(existing, [], [], [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
+        assert point.daily_mech_cost == pytest.approx(charged)
+        assert result.pending_mech_requests == []
+
+    def _existing_with_stored_cost(
+        self, stored_cost: float, daily_profit_raw: Optional[float]
+    ) -> ProfitOverTimeData:
+        """A one-day series whose two requests cost ``stored_cost``, not the flat fee."""
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        point = existing.data_points[0]
+        point.daily_mech_requests = 2
+        point.daily_mech_cost = stored_cost
+        point.daily_profit = 1.0 - stored_cost
+        point.cumulative_profit = round(point.daily_profit, 3)
+        point.daily_profit_raw = daily_profit_raw
+        return existing
+
+    def test_same_day_refresh_carries_the_stored_cost(self) -> None:
+        """Replacing today's point keeps its stored cost, not the flat fee."""
+        existing = self._existing_with_stored_cost(STORED_COST, 1.0)
+        stats = [{"date": str(_DAY0), "dailyProfit": str(2 * WEI_IN_ETH)}]
+
+        result = self._tick(existing, stats, [], [], _DAY0 + 500)
+
+        (point,) = result.data_points
+        assert point.daily_mech_requests == 2
+        assert point.daily_mech_cost == pytest.approx(STORED_COST)
+        assert point.daily_profit == pytest.approx(2.0 - STORED_COST)
+
+    @pytest.mark.parametrize("daily_profit_raw", [1.0, None])
+    def test_merge_into_a_stored_day_keeps_its_stored_cost(
+        self, daily_profit_raw: Optional[float]
+    ) -> None:
+        """A late request merged into a stored day adds to that day's stored cost."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing_with_stored_cost(STORED_COST, daily_profit_raw)
+        fetched = [{**_mech_request("Untraded", _DAY0 + 50), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == _DAY0)
+        expected_cost = STORED_COST + float(Decimal(CHARGE_A))
+        assert point.daily_mech_requests == 3
+        assert point.daily_mech_cost == pytest.approx(expected_cost)
+        assert point.daily_profit_raw == pytest.approx(1.0)
+        assert point.daily_profit == pytest.approx(1.0 - expected_cost)
+
+    def test_traded_day_is_charged_its_requests_charge(self) -> None:
+        """A charged request matched to a new day's bet adds its charge to that day."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Traded", day1 + 100), "chargeUsd": CHARGE_A}]
+        stats = [_stat(day1, [("Traded", day1 + 200)], False)]
+
+        result = self._tick(existing, stats, fetched, [], day1 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == day1)
+        assert point.daily_mech_requests == 1
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
+
+    def test_same_day_traded_charge_adds_to_the_carried_cost(self) -> None:
+        """Today's charged, traded request adds to the stored cost being carried."""
+        existing = self._existing_with_stored_cost(STORED_COST, 1.0)
+        fetched = [{**_mech_request("Traded", _DAY0 + 100), "chargeUsd": CHARGE_A}]
+        stats = [_stat(_DAY0, [("Traded", _DAY0 + 200)], False)]
+
+        result = self._tick(existing, stats, fetched, [], _DAY0 + 500)
+
+        (point,) = result.data_points
+        expected_cost = STORED_COST + float(Decimal(CHARGE_A))
+        assert point.daily_mech_requests == 3
+        assert point.daily_mech_cost == pytest.approx(expected_cost)
+        assert point.daily_profit == pytest.approx(-expected_cost)
+
+    def test_backfill_charges_a_mech_only_day_its_charge(self) -> None:
+        """An untraded request on a day without stats is charged on its own day."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        fetched = [{**_mech_request("Untraded", day1 + 100), "chargeUsd": CHARGE_A}]
+
+        series = self._backfill([_stat(_DAY0, [], False)], fetched, [], now=day1 + 500)
+
+        point = next(dp for dp in series.data_points if dp.timestamp == day1)
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
+
+    def test_incremental_new_mech_only_day_is_charged_its_charge(self) -> None:
+        """An untraded request on a new day is appended at its charge."""
+        day2 = _DAY0 + 2 * SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Untraded", day2 + 100), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [], day2 + 500)
+
+        point = next(dp for dp in result.data_points if dp.timestamp == day2)
+        assert point.daily_mech_cost == pytest.approx(float(Decimal(CHARGE_A)))
+        assert point.daily_profit == pytest.approx(-float(Decimal(CHARGE_A)))
+
+    @pytest.mark.parametrize("is_polymarket", [False, True])
+    def test_backfill_holds_back_a_request_at_its_charge(
+        self, is_polymarket: bool
+    ) -> None:
+        """A request held back as open is stored with the charge it was fetched with."""
+        fetched = [{**_mech_request("Open", _DAY0 + 150), "chargeUsd": CHARGE_A}]
+
+        series = self._backfill(
+            [_stat(_DAY0, [], is_polymarket)],
+            fetched,
+            [("Open", _DAY0 + 150)],
+            is_polymarket,
+        )
+
+        assert series.pending_mech_requests == [
+            PendingMechRequest("Open", _DAY0 + 150, CHARGE_A)
+        ]
+
+    def test_incremental_tick_holds_back_a_request_at_its_charge(self) -> None:
+        """A newly fetched open request is stored with its charge."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [{**_mech_request("Open", day1 + 100), "chargeUsd": CHARGE_A}]
+
+        result = self._tick(existing, [], fetched, [("Open", day1 + 100)], day1 + 500)
+
+        assert result.pending_mech_requests == [
+            PendingMechRequest("Open", day1 + 100, CHARGE_A)
+        ]
+
+    def test_still_open_pending_request_keeps_its_charge(self) -> None:
+        """A held-back request that stays open is stored again at its charge."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        pending = PendingMechRequest("Open", _DAY0 + 50, CHARGE_A)
+        existing.pending_mech_requests = [pending]
+        fetched = [_mech_request("Other", day1 + 100)]
+
+        result = self._tick(existing, [], fetched, [("Open", _DAY0 + 50)], day1 + 500)
+
+        assert result.pending_mech_requests == [pending]
 
 
 # ---------------------------------------------------------------------------

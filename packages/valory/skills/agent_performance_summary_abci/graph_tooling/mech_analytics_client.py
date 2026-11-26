@@ -45,6 +45,10 @@ _LOGGER = logging.getLogger(__name__)
 GNOSIS_CHAIN_ID = 100
 POLYGON_CHAIN_ID = 137
 
+# ``resolution_status`` of a request the mech never delivered.
+UNDELIVERED_STATUS = "undelivered"
+UNDELIVERED_CHARGE_USD = "0"
+
 # Endpoint's max page size per data.py MAX_LIMIT. Higher = fewer round-trips.
 SCORED_ROWS_PAGE_LIMIT = 5000
 
@@ -406,7 +410,10 @@ def rows_as_subgraph_mech_requests(
     :param rows: list of scored-row dicts as returned by
         ``fetch_scored_rows`` (endpoint payloads unchanged).
     :return: list of dicts shaped like the trader's existing subgraph
-        mech-request objects (``{blockTimestamp, parsedRequest}``).
+        mech-request objects (``{blockTimestamp, parsedRequest}``), plus
+        ``chargeUsd``: the charge the mech reported (a decimal string),
+        ``"0"`` for a request that was never delivered (nobody paid for
+        it), or ``None`` when the row has no charge.
     """
     adapted: List[Dict[str, Any]] = []
     for row in rows:
@@ -428,6 +435,11 @@ def rows_as_subgraph_mech_requests(
                 "blockTimestamp": block_timestamp,
                 "parsedRequest": parsed_request,
                 "requestId": row.get("request_id"),
+                "chargeUsd": (
+                    UNDELIVERED_CHARGE_USD
+                    if row.get("resolution_status") == UNDELIVERED_STATUS
+                    else row.get("charge_usd")
+                ),
             }
         )
     return adapted
