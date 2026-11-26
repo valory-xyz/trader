@@ -41,7 +41,7 @@ contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidvedqepygcbmztrglxlxq2tpbfwnnwjpzenjhx6zrrxbu6nloxe4
 - valory/agent_performance_summary_abci:0.1.0:bafybeih7zzfsszbe6574qchfrtwzogleohian53eqikahgi3cef45qipyu
-- valory/mech_interact_abci:0.1.0:bafybeib5ccvjvscggsehdr35jf3tm4sbfed2v3axoiu4xd3tgljdtnndui
+- valory/mech_interact_abci:0.1.0:bafybeialodsyweci4xtwjufhykz45nuof6ja24desmdzri5mgnb5azo2t4
 handlers:
   abci:
     args: {}
