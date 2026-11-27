@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeie3mdy743ahbisgpmygwu3twv4st7cybwmg7elgamlyosne7f7fcq
+agent: valory/trader:0.1.0:bafybeigjdge4jwfp5ryk6swam4znbswh22nish7wg3ud4dayx5ahzlrbra
 number_of_agents: 1
 deployment:
   agent:
@@ -413,7 +413,7 @@ config:
   mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
   mech_standard_route: ${MECH_STANDARD_ROUTE:bool:true}
   mech_facilitator_mech_addresses: ${MECH_FACILITATOR_MECH_ADDRESSES:dict:{"gnosis":"0x0E43bEF3472DB83D7418f76947F64159748B78a7","polygon":"0x7390dD0cDB8ae7d3744B409AB1b9326417Aa11E1"}}
-  mech_delivery_rate_limit: ${MECH_CHAT_DELIVERY_RATE_LIMIT:int:30000}
+  mech_delivery_rate_limits: ${MECH_CHAT_DELIVERY_RATE_LIMITS:dict:{"gnosis":30000000000000000,"polygon":30000}}
   mech_chain: ${MECH_CHAIN_ID:str:polygon}
   mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000}
