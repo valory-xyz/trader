@@ -209,10 +209,10 @@ class TraderParams(
             kwargs.pop("mech_pre_deposit_target", 0)
         )
         self.mech_pre_deposit_cap: int = int(kwargs.pop("mech_pre_deposit_cap", 0))
-        # Where to ask which payment asset the facilitator charges this Safe in.
-        # The same base URL the genai connection sends paid calls to.
-        self.mech_facilitator_base_url: str = str(
-            kwargs.pop("mech_facilitator_base_url", "") or ""
+        # The facilitator mech per chain, the one the genai connection sends
+        # paid calls to; its on-chain payment type picks the pre-deposit pot.
+        self.mech_facilitator_mech_addresses: Dict[str, str] = dict(
+            kwargs.pop("mech_facilitator_mech_addresses", None) or {}
         )
         # Native balance a top-up must leave the EOA. At or above the agent's
         # own refill threshold in ``fund_requirements``, or a deposit drops the

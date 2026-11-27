@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidhdk7craqa6uqdt2t3dhqu6tjtbtga4ba4sptpmo2s4rre3er4hy
+agent: valory/trader:0.1.0:bafybeie3mdy743ahbisgpmygwu3twv4st7cybwmg7elgamlyosne7f7fcq
 number_of_agents: 1
 deployment:
   agent:
@@ -167,7 +167,7 @@ models:
       mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000000000000000}
       mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000000000000000}
       mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000000000000000}
-      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      mech_facilitator_mech_addresses: ${MECH_FACILITATOR_MECH_ADDRESSES:dict:{"gnosis":"0x0E43bEF3472DB83D7418f76947F64159748B78a7","polygon":"0x7390dD0cDB8ae7d3744B409AB1b9326417Aa11E1"}}
       native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
@@ -387,6 +387,9 @@ config:
   use_x402: ${USE_X402:bool:false}
   use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
   mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_standard_route: ${MECH_STANDARD_ROUTE:bool:true}
+  mech_facilitator_mech_addresses: ${MECH_FACILITATOR_MECH_ADDRESSES:dict:{"gnosis":"0x0E43bEF3472DB83D7418f76947F64159748B78a7","polygon":"0x7390dD0cDB8ae7d3744B409AB1b9326417Aa11E1"}}
+  mech_delivery_rate_limit: ${MECH_CHAT_DELIVERY_RATE_LIMIT:int:30000000000000000}
   mech_chain: ${MECH_CHAIN_ID:str:gnosis}
   mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
   mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000000000000000}

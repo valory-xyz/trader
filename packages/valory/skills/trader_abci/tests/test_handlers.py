@@ -3559,7 +3559,7 @@ _MARKETPLACE = "0x" + "44" * 20
 _TOKEN = "0x" + "33" * 20
 _ZERO_ADDR = "0x" + "00" * 20
 _NATIVE_PAYMENT_TYPE = bytes.fromhex("ba" * 32)
-_FACILITATOR_URL = "https://facilitator.example"
+_FACILITATOR_MECH = "0x" + "66" * 20
 
 _FLOOR = 150_000
 _TARGET = 500_000
@@ -3653,7 +3653,7 @@ class _ChainStub:
 
         :param deposited: what the tracker reports for the Safe.
         :param token: the tracker's ERC20, or ``None`` for a native tracker.
-        :param payment_type: what the facilitator reports it charges in.
+        :param payment_type: the facilitator mech's on-chain payment type.
         :param tracker: what the marketplace maps the payment type to.
         """
         self.payment_type = payment_type
@@ -3661,6 +3661,7 @@ class _ChainStub:
         if token is not None:
             tracker_answers["token"] = token
         self._per_address: Dict[str, Dict[str, Any]] = {
+            _FACILITATOR_MECH.lower(): {"paymentType": payment_type},
             _MARKETPLACE.lower(): {"mapPaymentTypeBalanceTrackers": tracker},
             tracker.lower(): tracker_answers,
             _TOKEN.lower(): {},
@@ -3669,8 +3670,6 @@ class _ChainStub:
         self.encoded: List[Any] = []
         self.sent: List[Dict[str, Any]] = []
         self.bound: List[str] = []
-        # Set by ``_run`` so a test can assert what the facilitator was asked.
-        self.facilitator_get: Any = None
 
     def contract(self, chain: str, address: str, abi: List[Dict]) -> Any:
         """Return the stub for ``address``.
@@ -3720,7 +3719,7 @@ def _facilitator_handler(native_balance: int = 10**19) -> Any:
     params.mech_pre_deposit_floor = _FLOOR
     params.mech_pre_deposit_target = _TARGET
     params.mech_pre_deposit_cap = _CAP
-    params.mech_facilitator_base_url = _FACILITATOR_URL
+    params.mech_facilitator_mech_addresses = {"gnosis": _FACILITATOR_MECH}
     params.native_gas_reserve = _GAS_RESERVE
     params.mech_marketplace_config.mech_marketplace_address = _MARKETPLACE
     handler._safe_address_for_payments = MagicMock(return_value=_SAFE)  # type: ignore[method-assign]
@@ -3730,51 +3729,25 @@ def _facilitator_handler(native_balance: int = 10**19) -> Any:
     return handler
 
 
-def _facilitator_reply(
-    payment_type: Optional[bytes], status: int = 200
-) -> SimpleNamespace:
-    """Build what the facilitator's requester-info endpoint answers with.
-
-    :param payment_type: the payment type it reports, or ``None`` for a body
-        that carries no usable one.
-    :param status: the HTTP status to report.
-    :return: a stand-in response.
-    """
-    body: Dict[str, Any] = {}
-    if payment_type is not None:
-        body["payment_type"] = "0x" + payment_type.hex()
-    return SimpleNamespace(status_code=status, json=lambda: body)
-
-
-def _run(
-    handler: Any,
-    chain_stub: _ChainStub,
-    reply: Optional[SimpleNamespace] = None,
-    error: Optional[Exception] = None,
-) -> bool:
-    """Drive the pre-deposit check with the chain and the facilitator stubbed.
+def _run(handler: Any, chain_stub: _ChainStub) -> bool:
+    """Drive the pre-deposit check with the chain stubbed and HTTP forbidden.
 
     :param handler: the handler under test.
     :param chain_stub: the stub answering reads and recording sends.
-    :param reply: what the facilitator answers; by default the chain stub's own
-        payment type, so the two agree.
-    :param error: raised instead of answering, for the unreachable case.
     :return: what the check returned.
     """
     account = MagicMock()
     account.address = "0x" + "ee" * 20
-    if reply is None:
-        reply = _facilitator_reply(chain_stub.payment_type)
-    get_kwargs: Dict[str, Any] = (
-        {"side_effect": error} if error is not None else {"return_value": reply}
-    )
     with (
         patch.object(handler, "_contract", side_effect=chain_stub.contract),
         patch.object(handler, "_send_from_eoa", side_effect=chain_stub.send),
         patch.object(handler, "_get_eoa_account", return_value=account),
-        patch.object(beh_handlers.requests, "get", **get_kwargs) as get,
+        patch.object(
+            beh_handlers.requests,
+            "get",
+            side_effect=AssertionError("the facilitator must not be asked"),
+        ),
     ):
-        chain_stub.facilitator_get = get
         return handler._ensure_sufficient_funds_for_x402_payments()
 
 
@@ -4122,65 +4095,60 @@ class TestMechPreDepositTopUp:
         assert _run(handler, chain) is False
         assert chain.sent == []
 
-    @pytest.mark.parametrize(
-        "reply",
-        [
-            _facilitator_reply(_NATIVE_PAYMENT_TYPE, status=500),
-            _facilitator_reply(None),
-            SimpleNamespace(status_code=200, json=lambda: {"payment_type": "zz"}),
-            SimpleNamespace(status_code=200, json=lambda: {"payment_type": 7}),
-            SimpleNamespace(status_code=200, json=lambda: {}),
-        ],
-    )
-    def test_an_unusable_facilitator_answer_sends_nothing(
-        self, reply: SimpleNamespace
-    ) -> None:
-        """A bad answer must leave the pot alone rather than guess an asset.
+    def test_an_unreadable_mech_payment_type_sends_nothing(self) -> None:
+        """A mech whose ``paymentType()`` reverts leaves the pot alone."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+        chain._per_address[_FACILITATOR_MECH.lower()] = {}
 
-        :param reply: what the facilitator answers with.
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    @pytest.mark.parametrize(
+        "configured", [{}, {"gnosis": ""}, {"polygon": _FACILITATOR_MECH}]
+    )
+    def test_no_facilitator_mech_for_the_chain_sends_nothing(
+        self, configured: Dict[str, str]
+    ) -> None:
+        """Without the mech to read, which asset to deposit is unknown.
+
+        :param configured: the facilitator mechs configured.
         """
         handler = _facilitator_handler()
-        chain = _ChainStub(deposited=0, token=None)
-
-        assert _run(handler, chain, reply=reply) is False
-        assert chain.sent == []
-
-    def test_an_unreachable_facilitator_sends_nothing(self) -> None:
-        """A timeout must skip the period rather than deposit into a guess."""
-        handler = _facilitator_handler()
-        chain = _ChainStub(deposited=0, token=None)
-
-        assert _run(handler, chain, error=OSError("timed out")) is False
-        assert chain.sent == []
-
-    def test_no_facilitator_url_sends_nothing(self) -> None:
-        """Without somewhere to ask, which asset to deposit is unknown."""
-        handler = _facilitator_handler()
-        handler.context.params.mech_facilitator_base_url = ""
+        handler.context.params.mech_facilitator_mech_addresses = configured
         chain = _ChainStub(deposited=0, token=None)
 
         assert _run(handler, chain) is False
         assert chain.sent == []
 
-    def test_the_payment_type_comes_from_the_facilitator(self) -> None:
-        """The facilitator decides what it charges, so it decides the pot."""
+    def test_no_rpc_for_the_chain_sends_nothing(self) -> None:
+        """Without an RPC the mech cannot be read, so nothing is deposited."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        with patch.object(handler, "_contract", return_value=None):
+            account = MagicMock()
+            with patch.object(handler, "_get_eoa_account", return_value=account):
+                assert handler._ensure_sufficient_funds_for_x402_payments() is False
+        assert chain.sent == []
+
+    def test_the_payment_type_comes_from_the_facilitator_mech(self) -> None:
+        """The facilitator mech's own payment type decides the pot."""
         handler = _facilitator_handler()
         other = bytes.fromhex("cd" * 32)
-        chain = _ChainStub(deposited=0, token=None, payment_type=_NATIVE_PAYMENT_TYPE)
+        chain = _ChainStub(deposited=0, token=None, payment_type=other)
 
-        assert _run(handler, chain, reply=_facilitator_reply(other)) is True
+        assert _run(handler, chain) is True
 
-        # The type looked up is the one the facilitator named.
+        # Read from the configured mech, then looked up on the marketplace.
+        assert chain.reads[0] == ("paymentType", ())
+        assert _same_address(chain.bound[0], _FACILITATOR_MECH)
         lookups = [
             args
             for name, args in chain.reads
             if name == "mapPaymentTypeBalanceTrackers"
         ]
         assert lookups == [(other,)]
-        # Asked about this Safe, at the configured base URL.
-        url = chain.facilitator_get.call_args.args[0]
-        assert url.startswith(_FACILITATOR_URL)
-        assert _SAFE[2:].lower() in url.lower()
 
     def test_the_marketplace_comes_from_config(self) -> None:
         """Every address the deposit touches resolves from the configured one."""
@@ -4191,5 +4159,5 @@ class TestMechPreDepositTopUp:
 
         # The tracker comes from the configured marketplace, and nothing is
         # read from an address that arrived in a response.
-        assert [name for name, _ in chain.reads][0] == "mapPaymentTypeBalanceTrackers"
-        assert _same_address(chain.bound[0], _MARKETPLACE)
+        assert [name for name, _ in chain.reads][1] == "mapPaymentTypeBalanceTrackers"
+        assert _same_address(chain.bound[1], _MARKETPLACE)
